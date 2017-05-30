@@ -25,6 +25,8 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   }
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
+  points[,x_closestCentroid := double()]
+  points[,y_closestCentroid  := double()]
   clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
   # remove outliers coded as -1:
   clusterLabels = clusterLabels[eval(parse(text=cluster_id_col_name)) != -1,]
@@ -40,12 +42,16 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
       distance = euc.dist(position, cluster_centroid)
       if(distance < minDist){
         closestCluster = cluster
+        closestCentroid_x = cluster_centroid[1]
+        closestCentroid_y = cluster_centroid[2]
         minDist = distance
       }
     #assign closest cluster to point:
     # because we only loop through each point once, but loop through clusters for each point, assigning in this fashion effectively
     # assigns the points to the clusters because one cluster can be assigned multiple points while each point can be assigned only one cluster
     points[,cluster_ID := closestCluster]
+    points[,x_closestCentroid := closestCentroid_x]
+    points[,y_closestCentroid := closestCentroid_y]
     }
   }
   return(points)
@@ -53,6 +59,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
 
 #### End function definitions ###############################################################################################################################################################################################################################################################
 
+# Run test:
 
 setwd("/Users/seanhendryx/DATA/Lidar/SRER/maxLeafAreaOctober2015/OPTICS_Param_Tests/study-area")
 
@@ -67,6 +74,144 @@ points[,cluster_ID := NULL]
 
 assignedPoints = assignPointsToClusters(points, clusters)
 
+# Plot assigned Points:
+library(ggplot2)
+
+clusters$Label = factor(clusters$Label)
+# make qualitative color palette:
+# 82 "color blind friendly" colors from: http://tools.medialab.sciences-po.fr/iwanthue/
+# with outliers set to black
+cbf = c("#000000", "#be408c",
+  "#4cdc8b",
+  "#b1379e",
+  "#90d15e",
+  "#442986",
+  "#dab528",
+  "#577ceb",
+  "#cba815",
+  "#424cad",
+  "#acbd3d",
+  "#745bc4",
+  "#7bcf6e",
+  "#863c9f",
+  "#4eaa4c",
+  "#e768c5",
+  "#669b2c",
+  "#9e7ee9",
+  "#2e7c23",
+  "#c180e2",
+  "#a6bf55",
+  "#6d1b66",
+  "#37d8b0",
+  "#c42a6d",
+  "#5dba6f",
+  "#8d3f90",
+  "#af9a23",
+  "#6d7ddb",
+  "#e7af45",
+  "#468ae0",
+  "#dd8026",
+  "#4e62aa",
+  "#c1851b",
+  "#3d3072",
+  "#bdb553",
+  "#835fb5",
+  "#70851b",
+  "#e592e6",
+  "#255719",
+  "#b765b8",
+  "#3eac74",
+  "#992963",
+  "#77daa9",
+  "#ab2540",
+  "#36dee6",
+  "#cd3e43",
+  "#3aad8c",
+  "#e25968",
+  "#458541",
+  "#db81c4",
+  "#516f1d",
+  "#c093db",
+  "#817614",
+  "#7199e0",
+  "#a54909",
+  "#894f8e",
+  "#9fc069",
+  "#6b1740",
+  "#8cbf79",
+  "#d95987",
+  "#b9b567",
+  "#97436d",
+  "#e0b75e",
+  "#de7bae",
+  "#818035",
+  "#d04c6c",
+  "#b18b34",
+  "#e67d9f",
+  "#a06919",
+  "#822131",
+  "#d0a865",
+  "#7d2716",
+  "#e29249",
+  "#c76674",
+  "#80591b",
+  "#e77162",
+  "#9e3119",
+  "#e1925d",
+  "#d26c69",
+  "#d16c2f",
+  "#c46d53",
+  "#e26a4a",
+  "#aa612f")
+
+plotDT = clusters[Label != -1,]
+plotDT = droplevels(plotDT)
+ggp = ggplot(plotDT, aes(x = X, y = Y, color = Label)) + geom_point() + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
+ggp
+
+###########################################################################################################################
+#Making plot showing assingment of points to clusters:
+
+#organize data to be rbinded:
+#first remove unnecessary points from assignedPoints:
+validIDs = c(1:170)
+validIDs = as.character(validIDs)
+
+assignedPoints = assignedPoints[Sample_ID %in% validIDs,]
+
+ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = Label), data = plotDT) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
+
+ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = assignedPoints, shape = 8)
+
+# removing in situ points outside of study area:
+maxX = max(plotDT[,X])
+minX = min(plotDT[,X])
+maxY = max(plotDT[,Y])
+minY = min(plotDT[,Y])
+assignedPoints = assignedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
+
+
+
+
+
+
+
+#trash:
+files = list.files(pattern = "*.csv")
+
+dir.create("Graphs")
+
+for(file in files){
+  clustered = as.data.table(read.csv(file))
+  #labels = clustered[,Label]
+  names(clustered)[1] = 'X'
+  clustered[,Label := factor(Label)]
+  ggp = ggplot(clustered, aes(x = X, y = Y, color = Label))
+  ggp = ggp + geom_point() + theme_bw()
+  name = substr(file, 1, nchar(file)-4)
+  ggp
+  ggsave(paste0("Graphs/",name, ".png"), device = 'png')
+}
 
 
 
