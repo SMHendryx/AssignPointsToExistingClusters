@@ -8,9 +8,10 @@ library(data.table)
 #### Function definitions: ###############################################################################################################################################################################################################################################################
 
 #define Euclidean distance function for working with two points/vectors in n-dim space:
-euc.dist <- function(x1, x2){
+eucDist <- function(x1, x2){
   sqrt(sum((x1 - x2) ^ 2))
 } 
+
 
 assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label', compute_centroids = TRUE){
   # this algorithm assigns point values to clusters.  For example, 
@@ -48,7 +49,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
       }else{
         cluster_centroid = clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE]
       }
-      distance = euc.dist(position, cluster_centroid)
+      distance = eucDist(position, cluster_centroid)
       #print(paste0("distance from point to cluster centroid = ", distance, "\n"))
       if(distance < minDist){
         closestCluster = cluster
@@ -69,6 +70,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   }
   return(points)
 }
+
 
 #dmode function finds the mode with the highest peak (dominate mode) and nmodes identify the number of modes.
 #https://stackoverflow.com/questions/16255622/peak-of-the-kernel-density-estimation
@@ -95,6 +97,37 @@ plot(density(x))
   abline(v=dmode(x))
 
 
+
+thresholdPoints <- function(points, thresholdType = "dominateMode"){
+  ######################################################################################################################################################
+  # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster:
+  # Add boolean column indicating if the closest cluster is beyond threshold
+  points[, closest_cluster_outside_threshold := logical()]
+  # Return the distance of the closest in situ coordinate (i.e. "point" in points) to each cluster centroid in data.table:
+  # .SD[] makes Subset of Datatable
+  # https://stackoverflow.com/questions/33436647/group-by-and-select-min-date-with-data-table
+  closestPoints = points[,.SD[which.min(distance_to_centroid)], by = cluster_ID]
+
+  # Compute the threshold beyond which it is unlikely that the point corresponds to the cluster 
+  #   (or put another way, that the cluster represents the point):
+  print(closestPoints)
+  dominateModeDist = dmode(closestPoints$distance_to_centroid)
+  print(paste0("Dominate mode of distance between point and closest cluster: ", dominateModeDist))
+  meanDist = mean(closestPoints$distance_to_centroid)
+  print(paste0("Mean of distance between point and closest cluster: ", meanDist))
+  plot(density(closestPoints$distance_to_centroid))
+  
+  if(thresholdType == "dominateMode"){
+    threshold = dominateModeDist
+  }else{
+    threshold = meanDist
+  }
+  points[, closest_cluster_outside_threshold := (distance_to_centroid > threshold)]
+  #
+  return(points)
+}
+
+
 #### End function definitions ###############################################################################################################################################################################################################################################################
 
 # Run test:
@@ -111,6 +144,8 @@ points = as.data.table(read.csv("/Users/seanhendryx/DATA/SRERInSituData/SRER_Mes
 points[,cluster_ID := NULL]
 
 assignedPoints = assignPointsToClusters(points, clusters)
+
+threshedPoints = thresholdPoints(assignedPoints)
 
 
 ################################################################################################################################################################################################################################################
@@ -215,7 +250,7 @@ ggp = ggplot(plotDT, aes(x = X, y = Y, color = Label)) + geom_point() + theme_bw
 ggp
 
 ###########################################################################################################################
-#Making plot showing assingment of points to clusters:
+#Making plot showing assignment of points to clusters:
 
 #organize data to be rbinded:
 #first remove unnecessary points from assignedPoints:
@@ -238,42 +273,22 @@ assignedPoints = assignedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
 
 
 
+###########################################################################################################################
+# Plot only those points inside threshold:
 
 
+#organize data to be rbinded:
+#first remove unnecessary points from assignedPoints:
+validIDs = c(1:170)
+validIDs = as.character(validIDs)
 
-#trash:
-files = list.files(pattern = "*.csv")
+threshedPoints = threshedPoints[Sample_ID %in% validIDs,]
 
-dir.create("Graphs")
+ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 
-for(file in files){
-  clustered = as.data.table(read.csv(file))
-  #labels = clustered[,Label]
-  names(clustered)[1] = 'X'
-  clustered[,Label := factor(Label)]
-  ggp = ggplot(clustered, aes(x = X, y = Y, color = Label))
-  ggp = ggp + geom_point() + theme_bw()
-  name = substr(file, 1, nchar(file)-4)
-  ggp
-  ggsave(paste0("Graphs/",name, ".png"), device = 'png')
-}
+ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ggp
 
 
 

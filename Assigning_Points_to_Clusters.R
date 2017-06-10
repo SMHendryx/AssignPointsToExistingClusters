@@ -5,7 +5,7 @@
 library(data.table)
 
 #define Euclidean distance function for working with two points/vectors in n-dim space:
-euc.dist <- function(x1, x2){
+eucDist <- function(x1, x2){
   sqrt(sum((x1 - x2) ^ 2))
 } 
 assignPointsToClustersWithThreshold <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label', compute_centroids = TRUE){
@@ -44,7 +44,7 @@ assignPointsToClustersWithThreshold <- function(points, clusters, x_col_name = '
       }else{
         cluster_centroid = clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE]
       }
-      distance = euc.dist(position, cluster_centroid)
+      distance = eucDist(position, cluster_centroid)
       #print(paste0("distance from point to cluster centroid = ", distance, "\n"))
       if(distance < minDist){
         closestCluster = cluster
@@ -117,7 +117,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
       }else{
         cluster_centroid = clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE]
       }
-      distance = euc.dist(position, cluster_centroid)
+      distance = eucDist(position, cluster_centroid)
       #print(paste0("distance from point to cluster centroid = ", distance, "\n"))
       if(distance < minDist){
         closestCluster = cluster
