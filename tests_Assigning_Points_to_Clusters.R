@@ -30,32 +30,70 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
   # remove outliers coded as -1:
   clusterLabels = clusterLabels[eval(parse(text=cluster_id_col_name)) != -1,]
+  #print(paste0("clusterLabels", clusterLabels))
   for(i in seq(nrow(points))){
+    print(paste0("Looping through points, on point: ", i, "\n"))
     position = points[i, c(x_col_name, y_col_name), with = FALSE]
     minDist = Inf
-    for(cluster in clusterLabels){
+    #for each point, find the closest cluster centroid:
+    for(cluster in clusterLabels[,eval(parse(text=cluster_id_col_name))]){
+      #print(paste0("Looping through clusters, on cluster: ", cluster, "\n"))
       if(compute_centroids){
-        cluster_centroid = colMeans(clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE])
+        #print("cluster: \n")
+        #print(cluster)
+        #print("\n")
+        #print(clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE])
+        cluster_centroid = t(as.data.frame(colMeans(clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE])))
+        #print(paste0("cluster_centroid ", cluster_centroid, "\n"))
       }else{
         cluster_centroid = clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE]
       }
       distance = euc.dist(position, cluster_centroid)
+      #print(paste0("distance from point to cluster centroid = ", distance, "\n"))
       if(distance < minDist){
         closestCluster = cluster
         closestCentroid_x = cluster_centroid[1]
         closestCentroid_y = cluster_centroid[2]
         minDist = distance
       }
+    }
     #assign closest cluster to point:
     # because we only loop through each point once, but loop through clusters for each point, assigning in this fashion effectively
     # assigns the points to the clusters because one cluster can be assigned multiple points while each point can be assigned only one cluster
-    points[,cluster_ID := closestCluster]
-    points[,x_closestCentroid := closestCentroid_x]
-    points[,y_closestCentroid := closestCentroid_y]
-    }
+    print(paste0("closest cluster = ", closestCluster))
+    print(paste0("closest cluster distance (minDist) = ", minDist))
+    points[i,cluster_ID := closestCluster]
+    points[i,x_closestCentroid := closestCentroid_x]
+    points[i,y_closestCentroid := closestCentroid_y]
+    points[i,distance_to_centroid := minDist]
   }
   return(points)
 }
+
+#dmode function finds the mode with the highest peak (dominate mode) and nmodes identify the number of modes.
+#https://stackoverflow.com/questions/16255622/peak-of-the-kernel-density-estimation
+dmode <- function(x) {
+  den <- density(x, kernel=c("gaussian"))
+  ( den$x[den$y==max(den$y)]) 
+}  
+
+nmodes <- function(x) {  
+  den <- density(x, kernel=c("gaussian"))
+  den.s <- smooth.spline(den$x, den$y, all.knots=TRUE, spar=0.8)
+  s.0 <- predict(den.s, den.s$x, deriv=0)
+  s.1 <- predict(den.s, den.s$x, deriv=1)
+  s.derv <- data.frame(s0=s.0$y, s1=s.1$y)
+  nmodes <- length(rle(den.sign <- sign(s.derv$s1))$values)/2
+  if ((nmodes > 10) == TRUE) { nmodes <- 10 }
+  if (is.na(nmodes) == TRUE) { nmodes <- 0 } 
+  ( nmodes )
+}
+
+# Toy Example
+x <- runif(1000,0,100)
+plot(density(x))
+  abline(v=dmode(x))
+
 
 #### End function definitions ###############################################################################################################################################################################################################################################################
 
@@ -74,8 +112,15 @@ points[,cluster_ID := NULL]
 
 assignedPoints = assignPointsToClusters(points, clusters)
 
-# Plot assigned Points:
+
+################################################################################################################################################################################################################################################
+#plot distance translation distribution:
 library(ggplot2)
+p = ggplot(assignedPoints, aes(x = distance_to_centroid)) + geom_density(fill = "#3ec09a", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Cluster Centroid (m)", y = "Density")
+p
+
+# Plot assigned Points:
+
 
 clusters$Label = factor(clusters$Label)
 # make qualitative color palette:
