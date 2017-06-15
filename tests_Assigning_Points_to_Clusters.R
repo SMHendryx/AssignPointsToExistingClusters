@@ -13,10 +13,9 @@ eucDist <- function(x1, x2){
 } 
 
 
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label', compute_centroids = TRUE){
+assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
   # this algorithm assigns point values to clusters.  For example, 
-  # if we have a matrix of point coordinates, each of which should represent
-  # a cluster in some way.
+  # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
   # if outliers are coded as -1 in cluster_id_col_name, they will be assumed to not be clusters
   # :Param points: data.table object with columns 'X' and 'Y'
   # :Param clusters: data.table object with columns 'X', 'Y', and 'Label'
@@ -26,17 +25,24 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   }
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
+  # are these columns necessary????????????????????????????????????????????????????:
   points[,x_closestCentroid := double()]
   points[,y_closestCentroid  := double()]
-  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
+  # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
   # remove outliers coded as -1:
-  clusterLabels = clusterLabels[eval(parse(text=cluster_id_col_name)) != -1,]
+  clusters = clusters[Label != -1,]
+  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
   #print(paste0("clusterLabels", clusterLabels))
   for(i in seq(nrow(points))){
-    print(paste0("Looping through points, on point: ", i, "\n"))
+    print(paste0("Looping through points to find closest cluster, on point: ", i, "\n"))
     position = points[i, c(x_col_name, y_col_name), with = FALSE]
+    #find shortest distance between point and any cluster member (cluster point):
+    # i am here:
+    closestMember = clusters[,distance_to_point := list(eucDist(position, clusters[, c(x_col_name, y_col_name), with = FALSE]))][, .SD[which.min(distance_to_point)]]
+    print(paste0("closestMember: ", closestMember))
+
     minDist = Inf
-    #for each point, find the closest cluster centroid:
+    #for each point, find the closest cluster (based on closest member of any cluster):
     for(cluster in clusterLabels[,eval(parse(text=cluster_id_col_name))]){
       #print(paste0("Looping through clusters, on cluster: ", cluster, "\n"))
       if(compute_centroids){
@@ -289,6 +295,9 @@ ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), 
 ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
 
 ggp
+
+p = ggplot(threshedPoints[closest_cluster_outside_threshold == FALSE,], aes(x = distance_to_centroid)) + geom_density(fill = "gray41", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Cluster Centroid (m)", y = "Density")
+p
 
 
 
