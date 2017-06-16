@@ -13,6 +13,8 @@ eucDist <- function(x1, x2){
 } 
 
 
+####################################################################################################################################################################################
+# WORKING FAST:
 assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
   # this algorithm assigns point values to clusters.  For example, 
   # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
@@ -26,53 +28,34 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
   # are these columns necessary????????????????????????????????????????????????????:
-  points[,x_closestCentroid := double()]
-  points[,y_closestCentroid  := double()]
+  #points[,x_closestCentroid := double()]
+  #points[,y_closestCentroid  := double()]
   # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
   # remove outliers coded as -1:
   clusters = clusters[Label != -1,]
   clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
   #print(paste0("clusterLabels", clusterLabels))
   for(i in seq(nrow(points))){
-    print(paste0("Looping through points to find closest cluster, on point: ", i, "\n"))
+    print(paste0("Looping through points to find closest cluster, on point: ", i))
     position = points[i, c(x_col_name, y_col_name), with = FALSE]
+    #Trying to add position as a column:
+    clusters[,X_pointPosition := position[[1]]]
+    clusters[,Y_pointPosition := position[[2]]]
     #find shortest distance between point and any cluster member (cluster point):
-    # i am here:
-    closestMember = clusters[,distance_to_point := list(eucDist(position, clusters[, c(x_col_name, y_col_name), with = FALSE]))][, .SD[which.min(distance_to_point)]]
-    print(paste0("closestMember: ", closestMember))
+    clusters[,XDiff := (X_pointPosition - X)]
+    clusters[,YDiff := (Y_pointPosition - Y)]
+    clusters[,Xsq := XDiff^2]
+    clusters[,Ysq := YDiff^2]
+    clusters[,summed := Xsq + Ysq]
+    clusters[,distance_to_point := sqrt(summed)]
+    closestMember = clusters[, .SD[which.min(distance_to_point)]]
 
-    minDist = Inf
-    #for each point, find the closest cluster (based on closest member of any cluster):
-    for(cluster in clusterLabels[,eval(parse(text=cluster_id_col_name))]){
-      #print(paste0("Looping through clusters, on cluster: ", cluster, "\n"))
-      if(compute_centroids){
-        #print("cluster: \n")
-        #print(cluster)
-        #print("\n")
-        #print(clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE])
-        cluster_centroid = t(as.data.frame(colMeans(clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE])))
-        #print(paste0("cluster_centroid ", cluster_centroid, "\n"))
-      }else{
-        cluster_centroid = clusters[eval(parse(text=cluster_id_col_name)) == cluster, c(x_col_name, y_col_name), with = FALSE]
-      }
-      distance = eucDist(position, cluster_centroid)
-      #print(paste0("distance from point to cluster centroid = ", distance, "\n"))
-      if(distance < minDist){
-        closestCluster = cluster
-        closestCentroid_x = cluster_centroid[1]
-        closestCentroid_y = cluster_centroid[2]
-        minDist = distance
-      }
-    }
-    #assign closest cluster to point:
-    # because we only loop through each point once, but loop through clusters for each point, assigning in this fashion effectively
-    # assigns the points to the clusters because one cluster can be assigned multiple points while each point can be assigned only one cluster
-    print(paste0("closest cluster = ", closestCluster))
-    print(paste0("closest cluster distance (minDist) = ", minDist))
-    points[i,cluster_ID := closestCluster]
-    points[i,x_closestCentroid := closestCentroid_x]
-    points[i,y_closestCentroid := closestCentroid_y]
-    points[i,distance_to_centroid := minDist]
+    print(paste0("closestMember: ", closestMember$Label))
+    points[i,cluster_ID := closestMember$Label]
+    print(paste0("closest cluster member distance = ", closestMember$distance_to_point))
+    points[i,distance_to_closest_cluster_member := closestMember$distance_to_point]
+    points[i, X_closest_cluster_member := closestMember$X]
+    points[i, Y_closest_cluster_member := closestMember$Y]
   }
   return(points)
 }
@@ -106,21 +89,22 @@ plot(density(x))
 
 thresholdPoints <- function(points, thresholdType = "dominateMode"){
   ######################################################################################################################################################
-  # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster:
+  # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster.
+  ######################################################################################################################################################
   # Add boolean column indicating if the closest cluster is beyond threshold
   points[, closest_cluster_outside_threshold := logical()]
   # Return the distance of the closest in situ coordinate (i.e. "point" in points) to each cluster centroid in data.table:
   # .SD[] makes Subset of Datatable
   # https://stackoverflow.com/questions/33436647/group-by-and-select-min-date-with-data-table
-  closestPoints = points[,.SD[which.min(distance_to_centroid)], by = cluster_ID]
+  closestPoints = points[,.SD[which.min(distance_to_closest_cluster_member)], by = cluster_ID]
 
   # Compute the threshold beyond which it is unlikely that the point corresponds to the cluster 
   #   (or put another way, that the cluster represents the point):
   print(closestPoints)
-  dominateModeDist = dmode(closestPoints$distance_to_centroid)
-  print(paste0("Dominate mode of distance between point and closest cluster: ", dominateModeDist))
+  dominateModeDist = dmode(closestPoints$distance_to_closest_cluster_member)
+  print(paste0("Dominate mode of distances between point and closest cluster member: ", dominateModeDist))
   meanDist = mean(closestPoints$distance_to_centroid)
-  print(paste0("Mean of distance between point and closest cluster: ", meanDist))
+  print(paste0("Mean of distances between point and closest cluster member: ", meanDist))
   plot(density(closestPoints$distance_to_centroid))
   
   if(thresholdType == "dominateMode"){
@@ -128,7 +112,7 @@ thresholdPoints <- function(points, thresholdType = "dominateMode"){
   }else{
     threshold = meanDist
   }
-  points[, closest_cluster_outside_threshold := (distance_to_centroid > threshold)]
+  points[, closest_cluster_outside_threshold := (distance_to_closest_cluster_member > threshold)]
   #
   return(points)
 }
@@ -157,7 +141,7 @@ threshedPoints = thresholdPoints(assignedPoints)
 ################################################################################################################################################################################################################################################
 #plot distance translation distribution:
 library(ggplot2)
-p = ggplot(assignedPoints, aes(x = distance_to_centroid)) + geom_density(fill = "#3ec09a", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Cluster Centroid (m)", y = "Density")
+p = ggplot(testAssignedPoints, aes(x = distance_to_closest_cluster_member)) + geom_density(fill = "#3ec09a", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Closest Cluster Member (m)", y = "Density")
 p
 
 # Plot assigned Points:

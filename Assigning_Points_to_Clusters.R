@@ -59,6 +59,39 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
 
 
 
+thresholdPoints <- function(points, thresholdType = "dominateMode"){
+  ######################################################################################################################################################
+  # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster.  Expects a point set (data table) that has been assigned to clusters.
+  ######################################################################################################################################################
+  # Add boolean column indicating if the closest cluster is beyond threshold
+  points[, closest_cluster_outside_threshold := NULL]
+  points[, closest_cluster_outside_threshold := logical()]
+  # Return the distance of the closest in situ coordinate (i.e. "point" in points) to each cluster centroid in data.table:
+  # .SD[] makes Subset of Datatable
+  # https://stackoverflow.com/questions/33436647/group-by-and-select-min-date-with-data-table
+  closestPoints = points[,.SD[which.min(distance_to_closest_cluster_member)], by = cluster_ID]
+
+  # Compute the threshold beyond which it is unlikely that the point corresponds to the cluster 
+  #   (or put another way, that the cluster represents the point):
+  print(closestPoints)
+  dominateModeDist = dmode(closestPoints$distance_to_closest_cluster_member)
+  print(paste0("Dominate mode of distances between point and closest cluster member: ", dominateModeDist))
+  meanDist = mean(closestPoints$distance_to_closest_cluster_member)
+  print(paste0("Mean of distances between point and closest cluster member: ", meanDist))
+  plot(density(closestPoints$distance_to_closest_cluster_member))
+  
+  if(thresholdType == "dominateMode"){
+    threshold = dominateModeDist
+  }else{
+    threshold = meanDist
+  }
+  points[, closest_cluster_outside_threshold := (distance_to_closest_cluster_member > threshold)]
+  #
+  return(points)
+}
+
+
+
 
 
 
