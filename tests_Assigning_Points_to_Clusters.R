@@ -1,8 +1,12 @@
 # Matching_Points_And_Clusters
 # Authored by Sean Hendryx while working at the University of Arizona
 
+#time it:
+startTime = Sys.time()
+
 #load packages:
 library(data.table)
+library(ggplot2)
 
 
 #### Function definitions: ###############################################################################################################################################################################################################################################################
@@ -14,7 +18,7 @@ eucDist <- function(x1, x2){
 
 
 ####################################################################################################################################################################################
-# WORKING FAST:
+# WORKING FAST (expensive parts are vectorized):
 assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
   # this algorithm assigns point values to clusters.  For example, 
   # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
@@ -25,6 +29,9 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   if(any(names(points) == "cluster_ID")){
     stop("cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
   }
+  #first copy points and clusters to be modified locally (not by reference)
+  points = copy(points)
+  clusters = copy(clusters)
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
   # are these columns necessary????????????????????????????????????????????????????:
@@ -81,17 +88,20 @@ nmodes <- function(x) {
 }
 
 # Toy Example
-x <- runif(1000,0,100)
-plot(density(x))
-  abline(v=dmode(x))
+#x <- runif(1000,0,100)
+#plot(density(x))
+#  abline(v=dmode(x))
 
 
 
-thresholdPoints <- function(points, thresholdType = "dominateMode"){
+thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 1.05, plotDensity = FALSE){
   ######################################################################################################################################################
   # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster.
   ######################################################################################################################################################
   # Add boolean column indicating if the closest cluster is beyond threshold
+  #first copy points to be modified locally (not by reference)
+  points = copy(points)
+  points[, closest_cluster_outside_threshold := NULL]
   points[, closest_cluster_outside_threshold := logical()]
   # Return the distance of the closest in situ coordinate (i.e. "point" in points) to each cluster centroid in data.table:
   # .SD[] makes Subset of Datatable
@@ -103,19 +113,22 @@ thresholdPoints <- function(points, thresholdType = "dominateMode"){
   print(closestPoints)
   dominateModeDist = dmode(closestPoints$distance_to_closest_cluster_member)
   print(paste0("Dominate mode of distances between point and closest cluster member: ", dominateModeDist))
-  meanDist = mean(closestPoints$distance_to_centroid)
+  meanDist = mean(closestPoints$distance_to_closest_cluster_member)
   print(paste0("Mean of distances between point and closest cluster member: ", meanDist))
-  plot(density(closestPoints$distance_to_centroid))
-  
-  if(thresholdType == "dominateMode"){
-    threshold = dominateModeDist
-  }else{
-    threshold = meanDist
+  if (plotDensity) { #then:
+    plot(density(closestPoints$distance_to_closest_cluster_member))
   }
+  if(thresholdType == "dominateMode"){
+    threshold = dominateModeDist * buffer
+  }else{
+    threshold = meanDist * buffer
+  }
+  print(paste0("threshold = ", threshold))
   points[, closest_cluster_outside_threshold := (distance_to_closest_cluster_member > threshold)]
   #
   return(points)
 }
+
 
 
 #### End function definitions ###############################################################################################################################################################################################################################################################
@@ -133,20 +146,20 @@ points = as.data.table(read.csv("/Users/seanhendryx/DATA/SRERInSituData/SRER_Mes
 
 points[,cluster_ID := NULL]
 
+# Run algorithms:
 assignedPoints = assignPointsToClusters(points, clusters)
 
-threshedPoints = thresholdPoints(assignedPoints)
+defaultThreshedPoints = thresholdPoints(assignedPoints)
+nrow(defaultThreshedPoints[closest_cluster_outside_threshold == FALSE,])
+threshedPoints = thresholdPoints(assignedPoints, buffer = 1.5)
+nrow(threshedPoints[closest_cluster_outside_threshold == FALSE,])
 
 
 ################################################################################################################################################################################################################################################
-#plot distance translation distribution:
-library(ggplot2)
-p = ggplot(testAssignedPoints, aes(x = distance_to_closest_cluster_member)) + geom_density(fill = "#3ec09a", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Closest Cluster Member (m)", y = "Density")
-p
+#####  PLOTS ##################################################################################################################################################################################################################################################################################################################################################################################
+################################################################################################################################################################################################################################################
 
-# Plot assigned Points:
-
-
+# Plot assigned & threshed Points over clusters:
 clusters$Label = factor(clusters$Label)
 # make qualitative color palette:
 # 82 "color blind friendly" colors from: http://tools.medialab.sciences-po.fr/iwanthue/
@@ -234,12 +247,57 @@ cbf = c("#000000", "#be408c",
   "#e26a4a",
   "#aa612f")
 
+# Plot only those points inside threshold:
+#organize data to be rbinded:
+#first remove unnecessary points from assigned and thresholded Points:
+validIDs = c(1:170)
+validIDs = as.character(validIDs)
+threshedPoints = threshedPoints[Sample_ID %in% validIDs,]
+
+#remove outliers (coded -1) in clusters data.table:
 plotDT = clusters[Label != -1,]
 plotDT = droplevels(plotDT)
+
+# removing in situ points outside of study area:
+maxX = max(plotDT[,X])
+minX = min(plotDT[,X])
+maxY = max(plotDT[,Y])
+minY = min(plotDT[,Y])
+threshedPoints = threshedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
+
+
+renderStartTime = Sys.time()
+ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
+
+ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
+ggp
+print("Time taken to render graph: ")
+print(renderTimeTaken)
+
+endTime = Sys.time()
+
+renderTimeTaken = endTime - renderStartTime
+
+timeTaken = endTime - startTime
+
+print("Total Time Taken: ")
+print(timeTaken)
+
+
+
+######################################################################################################################################################################################################################################################
+
+#plot distance translation distribution:
+p = ggplot(testAssignedPoints, aes(x = distance_to_closest_cluster_member)) + geom_density(fill = "#3ec09a", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Closest Cluster Member (m)", y = "Density")
+p
+
+######################################################################################################################################################################################################################################################
+
+#plot all clusters:
 ggp = ggplot(plotDT, aes(x = X, y = Y, color = Label)) + geom_point() + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 ggp
 
-###########################################################################################################################
+######################################################################################################################################################################################################################################################
 #Making plot showing assignment of points to clusters:
 
 #organize data to be rbinded:
@@ -254,31 +312,18 @@ ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = Label), data = p
 ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = assignedPoints, shape = 8)
 
 # removing in situ points outside of study area:
-maxX = max(plotDT[,X])
-minX = min(plotDT[,X])
-maxY = max(plotDT[,Y])
-minY = min(plotDT[,Y])
-assignedPoints = assignedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
+# NOW COMPLETED BEFORE RUNNING assignPointsToClusters()
+#maxX = max(plotDT[,X])
+#minX = min(plotDT[,X])
+#maxY = max(plotDT[,Y])
+#minY = min(plotDT[,Y])
+#assignedPoints = assignedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
 
 
 
 
 ###########################################################################################################################
-# Plot only those points inside threshold:
 
-
-#organize data to be rbinded:
-#first remove unnecessary points from assignedPoints:
-validIDs = c(1:170)
-validIDs = as.character(validIDs)
-
-threshedPoints = threshedPoints[Sample_ID %in% validIDs,]
-
-ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
-
-ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
-
-ggp
 
 p = ggplot(threshedPoints[closest_cluster_outside_threshold == FALSE,], aes(x = distance_to_centroid)) + geom_density(fill = "gray41", alpha = 0.5) + theme_bw() + labs(x = "Distance from Point to Cluster Centroid (m)", y = "Density")
 p
