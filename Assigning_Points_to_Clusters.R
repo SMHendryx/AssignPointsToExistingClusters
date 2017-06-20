@@ -20,6 +20,9 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   if(any(names(points) == "cluster_ID")){
     stop("cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
   }
+  #first copy points and clusters to be modified locally (not by reference)
+  points = copy(points)
+  clusters = copy(clusters)
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
   # are these columns necessary????????????????????????????????????????????????????:
@@ -63,6 +66,8 @@ thresholdPoints <- function(points, thresholdType = "dominateMode"){
   ######################################################################################################################################################
   # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster.  Expects a point set (data table) that has been assigned to clusters.
   ######################################################################################################################################################
+  #first copy points and clusters to be modified locally (not by reference)
+  points = copy(points)
   # Add boolean column indicating if the closest cluster is beyond threshold
   points[, closest_cluster_outside_threshold := NULL]
   points[, closest_cluster_outside_threshold := logical()]

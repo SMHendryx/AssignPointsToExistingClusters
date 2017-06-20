@@ -149,10 +149,13 @@ points[,cluster_ID := NULL]
 # Run algorithms:
 assignedPoints = assignPointsToClusters(points, clusters)
 
+# TESTING BUFFER PARAMETER:
 defaultThreshedPoints = thresholdPoints(assignedPoints)
 nrow(defaultThreshedPoints[closest_cluster_outside_threshold == FALSE,])
 threshedPoints = thresholdPoints(assignedPoints, buffer = 1.5)
 nrow(threshedPoints[closest_cluster_outside_threshold == FALSE,])
+threshedPoints3 = thresholdPoints(assignedPoints, buffer = 3)
+nrow(threshedPoints3[closest_cluster_outside_threshold == FALSE,])
 
 
 ################################################################################################################################################################################################################################################
@@ -269,16 +272,14 @@ threshedPoints = threshedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
 renderStartTime = Sys.time()
 ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 
-ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
+ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints3[closest_cluster_outside_threshold == FALSE,], shape = 8)
 ggp
-print("Time taken to render graph: ")
-print(renderTimeTaken)
 
 endTime = Sys.time()
-
 renderTimeTaken = endTime - renderStartTime
-
 timeTaken = endTime - startTime
+print("Time taken to render graph: ")
+print(renderTimeTaken)
 
 print("Total Time Taken: ")
 print(timeTaken)
