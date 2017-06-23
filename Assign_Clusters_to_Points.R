@@ -1,4 +1,5 @@
-# Algorithms for assigning points in one dataset to clusters in another dataset and removing unlikely points based on a threshold.
+# Algorithms for assigning points in one dataset to clusters in another dataset 
+# flagging unlikely correspondences based on a distance threshold.
 # Authored by Sean Hendryx while working at the University of Arizona
 
 #load packages:
@@ -12,9 +13,11 @@ eucDist <- function(x1, x2){
 #algos:
 ####################################################################################################################################################################################
 # vectorized:
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
-  # this algorithm assigns point values to clusters.  For example, 
-  # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
+assignPointsToClusters <- function(clusters, points, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
+  # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
+  # flags unlikely correspondences based on distance threshold
+  # and then determines if any other clusters should be assigned to that point based on information held in the point.
+    # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
   # if outliers are coded as -1 in cluster_id_col_name, they will be assumed to not be clusters
   # :Param points: data.table object with columns 'X' and 'Y'
   # :Param clusters: data.table object with columns 'X', 'Y', and 'Label'
@@ -99,15 +102,4 @@ thresholdPoints <- function(points, thresholdType = "dominateMode"){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+}

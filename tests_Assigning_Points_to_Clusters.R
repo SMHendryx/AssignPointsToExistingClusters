@@ -94,7 +94,7 @@ nmodes <- function(x) {
 
 
 
-thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 1.05, plotDensity = FALSE){
+thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10, plotDensity = FALSE){
   ######################################################################################################################################################
   # Function computes threshold beyond which it is unlikely that the point corresponds to the cluster.
   ######################################################################################################################################################
@@ -156,6 +156,19 @@ threshedPoints = thresholdPoints(assignedPoints, buffer = 1.5)
 nrow(threshedPoints[closest_cluster_outside_threshold == FALSE,])
 threshedPoints3 = thresholdPoints(assignedPoints, buffer = 3)
 nrow(threshedPoints3[closest_cluster_outside_threshold == FALSE,])
+
+threshedPoints4 = thresholdPoints(assignedPoints, buffer = 4)
+nrow(threshedPoints4[closest_cluster_outside_threshold == FALSE,])
+
+threshedPoints5 = thresholdPoints(assignedPoints, buffer = 5)
+nrow(threshedPoints5[closest_cluster_outside_threshold == FALSE,])
+
+threshedPoints6 = thresholdPoints(assignedPoints, buffer = 6)
+nrow(threshedPoints6[closest_cluster_outside_threshold == FALSE,])
+
+#seems to be best:
+threshedPoints10 = thresholdPoints(assignedPoints, buffer = 10)
+nrow(threshedPoints10[closest_cluster_outside_threshold == FALSE,])
 
 
 ################################################################################################################################################################################################################################################
@@ -272,7 +285,7 @@ threshedPoints = threshedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
 renderStartTime = Sys.time()
 ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 
-ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints3[closest_cluster_outside_threshold == FALSE,], shape = 8)
+ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = threshedPoints10[closest_cluster_outside_threshold == FALSE,], shape = 8)
 ggp
 
 endTime = Sys.time()
