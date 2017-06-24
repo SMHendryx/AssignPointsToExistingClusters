@@ -1,15 +1,16 @@
-# Algorithms for assigning points in one dataset to clusters in another dataset and removing unlikely correspondences based on a distance threshold.
+# Algorithms for assigning points in one dataset to clusters in another dataset 
+# flagging unlikely correspondences based on a distance threshold.
 # Authored by Sean Hendryx while working at the University of Arizona
 
 #load packages:
 library(data.table)
 
+#helper functions firs:
 #define Euclidean distance function for working with two points/vectors in n-dim space:
 eucDist <- function(x1, x2){
   sqrt(sum((x1 - x2) ^ 2))
 } 
 
-#helper functions firs:
 #dmode function finds the mode with the highest peak (dominate mode) and nmodes identify the number of modes.
 #https://stackoverflow.com/questions/16255622/peak-of-the-kernel-density-estimation
 dmode <- function(x) {
@@ -31,56 +32,6 @@ nmodes <- function(x) {
 
 #algos:
 ####################################################################################################################################################################################
-# vectorized:
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label'){
-  # this algorithm assigns point values to clusters.  For example, 
-  # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
-  # if outliers are coded as -1 in cluster_id_col_name, they will be assumed to not be clusters
-  # :Param points: data.table object with columns 'X' and 'Y'
-  # :Param clusters: data.table object with columns 'X', 'Y', and 'Label'
-  #check if column already exists:
-  if(any(names(points) == "cluster_ID")){
-    stop("cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
-  }
-  #first copy points and clusters to be modified locally (not by reference)
-  points = copy(points)
-  clusters = copy(clusters)
-  #if doesn't exist, add:
-  points[,cluster_ID := integer()]
-  # are these columns necessary????????????????????????????????????????????????????:
-  #points[,x_closestCentroid := double()]
-  #points[,y_closestCentroid  := double()]
-  # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
-  # remove outliers coded as -1:
-  clusters = clusters[Label != -1,]
-  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
-  #print(paste0("clusterLabels", clusterLabels))
-  for(i in seq(nrow(points))){
-    print(paste0("Looping through points to find closest cluster, on point: ", i))
-    position = points[i, c(x_col_name, y_col_name), with = FALSE]
-    #Trying to add position as a column:
-    clusters[,X_pointPosition := position[[1]]]
-    clusters[,Y_pointPosition := position[[2]]]
-    #find shortest distance between point and any cluster member (cluster point):
-    clusters[,XDiff := (X_pointPosition - X)]
-    clusters[,YDiff := (Y_pointPosition - Y)]
-    clusters[,Xsq := XDiff^2]
-    clusters[,Ysq := YDiff^2]
-    clusters[,summed := Xsq + Ysq]
-    clusters[,distance_to_point := sqrt(summed)]
-    closestMember = clusters[, .SD[which.min(distance_to_point)]]
-
-    print(paste0("closestMember: ", closestMember$Label))
-    points[i,cluster_ID := closestMember$Label]
-    print(paste0("closest cluster member distance = ", closestMember$distance_to_point))
-    points[i,distance_to_closest_cluster_member := closestMember$distance_to_point]
-    points[i, X_closest_cluster_member := closestMember$X]
-    points[i, Y_closest_cluster_member := closestMember$Y]
-  }
-  return(points)
-}
-
-
 
 
 thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10, plotDensity = FALSE){
@@ -118,8 +69,62 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
   return(points)
 }
 
+# vectorized:
+assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
+  # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
+  # flags unlikely correspondences based on distance threshold,
+  # and then determines if any other clusters should be assigned to that point based on information held in the point.
+    # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
+  # if outliers are coded as -1 in cluster_id_col_name, they will be assumed to not be clusters
+  # :Param points: data.table object with columns 'X' and 'Y'
+  # :Param clusters: data.table object with columns 'X', 'Y', and 'Label'
+  #check if column already exists:
+  if(any(names(points) == "cluster_ID")){
+    stop("cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
+  }
+  #first copy points and clusters to be modified locally (not by reference)
+  points = copy(points)
+  clusters = copy(clusters)
+  #if doesn't exist, add:
+  points[,cluster_ID := integer()]
+  # are these columns necessary????????????????????????????????????????????????????:
+  #points[,x_closestCentroid := double()]
+  #points[,y_closestCentroid  := double()]
+  # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
+  # remove outliers coded as -1:
+  clusters = clusters[Label != -1,]
+  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
+  #print(paste0("clusterLabels", clusterLabels))
+  for(i in seq(nrow(points))){
+    print(paste0("Looping through points to find closest cluster, on point: ", i))
+    position = points[i, c(x_col_name, y_col_name), with = FALSE]
+    #Trying to add position as a column:
+    clusters[,X_pointPosition := position[[1]]]
+    clusters[,Y_pointPosition := position[[2]]]
+    #find shortest distance between point and any cluster member (cluster point):
+    clusters[,XDiff := (X_pointPosition - X)]
+    clusters[,YDiff := (Y_pointPosition - Y)]
+    clusters[,Xsq := XDiff^2]
+    clusters[,Ysq := YDiff^2]
+    clusters[,summed := Xsq + Ysq]
+    clusters[,distance_to_point := sqrt(summed)]
+    closestMember = clusters[, .SD[which.min(distance_to_point)]]
+    #
+    print(paste0("closestMember: ", closestMember$Label))
+    points[i,cluster_ID := closestMember$Label]
+    print(paste0("closest cluster member distance = ", closestMember$distance_to_point))
+    points[i,distance_to_closest_cluster_member := closestMember$distance_to_point]
+    points[i, X_closest_cluster_member := closestMember$X]
+    points[i, Y_closest_cluster_member := closestMember$Y]
+  }
+  points = thresholdPoints(points, thresholdType = thresholdType, buffer = buffer)
+  return(points)
+}
 
 
+checkIfPointRepresentsMoreThanOneCluster <- function(points, clusters){
+  
+}
 
 
 
