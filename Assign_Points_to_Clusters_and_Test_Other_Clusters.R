@@ -30,6 +30,12 @@ nmodes <- function(x) {
   ( nmodes )
 }
 
+# Toy Example
+#x <- runif(1000,0,100)
+#plot(density(x))
+#  abline(v=dmode(x))
+
+
 #algos:
 ####################################################################################################################################################################################
 
@@ -88,6 +94,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   #if doesn't exist, add:
   points[,cluster_ID := integer()]
   # are these columns necessary????????????????????????????????????????????????????:
+  # YES!  for checkIfPointRepresentsMoreThanOneCluster
   #points[,x_closestCentroid := double()]
   #points[,y_closestCentroid  := double()]
   # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
@@ -122,13 +129,54 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
 }
 
 
-checkIfPointRepresentsMoreThanOneCluster <- function(points, clusters){
-  
+checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
+  # Function determines if any other clusters should be assigned to that point based on information held in the point (metadat) and, if so,
+  # assigns the cluster(s) to the point.
+  # Assumes that metadata is at the same scale of clusters
+  # returns the clusters
+
+  # first add assignedPoint ID (currently hardcoded as Sample_ID) to clusters:
+  # to vectorize, do something like this: clusters[,assigned_to_point := ].  Otherwise:
+  for(i in seq(nrow(points))){
+    # first add assignedPoint ID to clusters:
+    point = copy(assignedPoints[i,])
+    clusters[Label == point$cluster_ID, assigned_to_point := point$Sample_ID]
+  }#end for loop
+  # remove clustersoutliers coded as -1:
+  clusters = clusters[Label != -1,]
+  # Make datatable of unassigned clusters:
+  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
+  unassignedClusters = copy(clusters[is.na(assigned_to_point),])
+  # Make copy of unassigned cluster centroids (to be filled in):
+  unassignedClusterLabels = unique(unassignedClusters[,Label])
+  unassignedClusterCentroids = data.table(Label = unassignedClusterLabels)#, X =  double(), Y = double(), Z = double(), assigned_to_point = NA)
+  setkey(unassignedClusterCentroids)
+  unassignedClusterCentroids[,X:= double()]
+  unassignedClusterCentroids[,Y:= double()]
+  unassignedClusterCentroids[,Z:= double()]
+  unassignedClusterCentroids[,assigned_to_point := NA]
+  #
+  # compute unassignedClusetrCentroids
+
+  # Loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
 }
 
 
 
 
+#trash:
+
+    #control whether we are looping through prospective clusters:
+    prospectiveClusterRemaining = TRUE
+    # set predictedTrueClusterCentroid equal to the centroid of the cluster to which the point has been assigned:
+    predictedTrueClusterCentroid = t(as.data.frame(colMeans(clusters[Label == point$cluster_ID, c(X, Y),])))
+    # search within radius determined by point metadata to determine if an additional cluster is represented by the point:
+
+    # if so, assign cluster to point:
+
+    # "merge" clusters and compute new centroid of merged clusters:
+
+    # ^ end inner loop: again search within radius determined by point metadata to determine if an additional cluster is represented by the point:
 
 
 
