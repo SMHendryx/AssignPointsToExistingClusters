@@ -5,7 +5,7 @@
 #load packages:
 library(data.table)
 
-#helper functions firs:
+#helper functions first:
 #define Euclidean distance function for working with two points/vectors in n-dim space:
 eucDist <- function(x1, x2){
   sqrt(sum((x1 - x2) ^ 2))
@@ -95,8 +95,8 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   points[,cluster_ID := integer()]
   # are these columns necessary????????????????????????????????????????????????????:
   # YES!  for checkIfPointRepresentsMoreThanOneCluster
-  #points[,x_closestCentroid := double()]
-  #points[,y_closestCentroid  := double()]
+  points[,x_closestCentroid := double()]
+  points[,y_closestCentroid  := double()]
   # ^^^^^^^^^^^^^^^^^Necessary ^???????????????????????????????????????????????????
   # remove outliers coded as -1:
   clusters = clusters[Label != -1,]
@@ -123,6 +123,12 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
     points[i,distance_to_closest_cluster_member := closestMember$distance_to_point]
     points[i, X_closest_cluster_member := closestMember$X]
     points[i, Y_closest_cluster_member := closestMember$Y]
+    #compute the centroid of the closest cluster:
+    X = clusters[Label == closestMember$Label, X]
+    Y = clusters[Label == closestMember$Label, Y]
+    clusterCentroid = colMeans(cbind(X, Y))
+    points[i, X_closest_cluster_centroid := clusterCentroid[1]]
+    points[i, Y_closest_cluster_centroid := clusterCentroid[2]]
   }
   points = thresholdPoints(points, thresholdType = thresholdType, buffer = buffer)
   return(points)
@@ -130,34 +136,45 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
 
 
 checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
-  # Function determines if any other clusters should be assigned to that point based on information held in the point (metadat) and, if so,
+  # Function determines if any other clusters should be assigned to the point based on information held in the point (metadata) and, if so,
   # assigns the cluster(s) to the point.
   # Assumes that metadata is at the same scale of clusters
   # returns the clusters
-
-  # first add assignedPoint ID (currently hardcoded as Sample_ID) to clusters:
+  
+  # First, remove clustersoutliers coded as -1:
+  clusters = clusters[Label != -1,]
+  # since factor, Label -1 still exists as level, so:
+  clusters[,Label := droplevels(Label)]
+  # Add assignedPoint ID (currently hardcoded as Sample_ID) to clusters:
   # to vectorize, do something like this: clusters[,assigned_to_point := ].  Otherwise:
   for(i in seq(nrow(points))){
-    # first add assignedPoint ID to clusters:
+    # Adding assignedPoint ID to clusters:
     point = copy(assignedPoints[i,])
     clusters[Label == point$cluster_ID, assigned_to_point := point$Sample_ID]
   }#end for loop
-  # remove clustersoutliers coded as -1:
-  clusters = clusters[Label != -1,]
   # Make datatable of unassigned clusters:
-  clusterLabels = unique(clusters[,cluster_id_col_name, with = FALSE])
   unassignedClusters = copy(clusters[is.na(assigned_to_point),])
   # Make copy of unassigned cluster centroids (to be filled in):
   unassignedClusterLabels = unique(unassignedClusters[,Label])
+  # convert from factor to numeric:
+  unassignedClusterLabels = as.numeric(unassignedClusterLabels)
   unassignedClusterCentroids = data.table(Label = unassignedClusterLabels)#, X =  double(), Y = double(), Z = double(), assigned_to_point = NA)
   setkey(unassignedClusterCentroids)
   unassignedClusterCentroids[,X:= double()]
   unassignedClusterCentroids[,Y:= double()]
-  unassignedClusterCentroids[,Z:= double()]
+  #just in 2D for now
+  #unassignedClusterCentroids[,Z:= double()]
   unassignedClusterCentroids[,assigned_to_point := NA]
-  #
-  # compute unassignedClusetrCentroids
-
+  # I am here
+  # compute unassignedClusterCentroids:
+  for (clusterLabel in unassignedClusterLabels){
+    X = clusters[Label == clusterLabel, X]
+    Y = clusters[Label == clusterLabel, Y]
+    clusterCentroid = colMeans(cbind(X, Y))
+    unassignedClusterCentroids[Label == clusterLabel, X := clusterCentroid[1]]
+    unassignedClusterCentroids[Label == clusterLabel, Y := clusterCentroid[2]]
+    print("One iteration of for loop computing and storing unassigned cluster centroid.")
+  }
   # Loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
 }
 
