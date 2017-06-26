@@ -85,7 +85,7 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
 assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_id_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
   # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
   # flags unlikely correspondences based on distance threshold,
-  # and then determines if any other clusters should be assigned to that point based on information held in the point.
+  # and then determines if any other clusters should be assigned to that point based on metadata about the point.
     # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
   # if outliers are coded as -1 in cluster_id_col_name, they will be assumed to not be clusters
   # :Param points: data.table object with columns 'X' and 'Y'
@@ -286,8 +286,11 @@ assignedPoints = assignedPoints[X < maxX & X > minX & Y < maxY & Y > minY]
 
 renderStartTime = Sys.time()
 ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
+#testing adding assigned_to_point column to clusters:
+ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(assigned_to_point)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 
-ggp = ggp + geom_point(mapping = aes(x = X, y = Y),data = assignedPoints[closest_cluster_outside_threshold == FALSE,], shape = 8)
+ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE,], mapping = aes(x = X, y = Y), shape = 8)
+ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE,], mapping = aes(x = X_closest_cluster_centroid, y = Y_closest_cluster_centroid), shape = 13)
 ggp
 
 endTime = Sys.time()
