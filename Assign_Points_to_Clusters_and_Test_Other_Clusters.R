@@ -155,13 +155,25 @@ testIfPointWithinCircle <- function(x, center_x, y, center_y, radius){
   }
 }
 
+computeNewCentroid_and_AssignPointToCluster <- function(sampleID, assignedPoints, clusters){
+  #sampleID refers to the id of the point in assignedPoints for which we are searching for clusters that belong to it.
+  #returns clusters
+  #
+  # First, compute new centroid:
+
+  # Second, test if any other cluster centroids fall within circle centered at new centroid:
+  #  If so, assign point to cluster
+  #  And recursively call  testIfPointWithinCircle_and_computeNewCentroid_and_AssignPointToCluster
+  #    for (unassignedClusterLabel in unassignedClusterLabels)
+}
+
 checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   # Function determines if any other clusters should be assigned to the point based on information held in the point (metadata) and, if so,
   # assigns the cluster(s) to the point.
   # Assumes that metadata is at the same scale of clusters
   # returns the clusters
   
-  # First, remove clustersoutliers coded as -1:
+  # First, remove clusters outliers coded as -1:
   clusters = clusters[Label != -1,]
   # since factor, Label -1 still exists as level, so:
   clusters[,Label := droplevels(Label)]
@@ -201,9 +213,9 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   # Now loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
   pointIDs = assignedPoints$Sample_ID
   for(pointID in pointIDs){
-    #this logic isn't right:
-    merge = TRUE
-    while(merge == TRUE){
+    # I am here: this logic isn't right:
+    #merge = TRUE
+    #while(merge == TRUE){
     center_x = assignedPoints[Sample_ID == pointID, X_closest_cluster_centroid]
     center_y = assignedPoints[Sample_ID == pointID, Y_closest_cluster_centroid]
     radius = assignedPoints[Sample_ID == pointID, Minor_Axis]
@@ -211,19 +223,22 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
       # Compute remaining unassigned cluster labels:
       unassignedClusterLabels = unique(clusters[is.na(assigned_to_point), assigned_to_point])
       # set merge to false to be set to true if clusters need to be merged:
-      merge = FALSE
+      #merge = FALSE
       for (unassignedClusterLabel in unassignedClusterLabels){
         # test if point falls within minor axis circle from assigned cluster centroid:
         #x, center_x, y, center_y, radius
         x = unassignedClusterCentroids[Label == unassignedClusterLabel, X]
         y = unassignedClusterCentroids[Label == unassignedClusterLabel, y]
+        # SHOULD SOMEHOW MAKE THIS A RECURSIVE CALL:
         if (testIfPointWithinCircle(x = x, center_x = center_x, y = y, center_y = center_y, radius = radius)){
           #if unassigned cluster centroid within minor_axis radius of assigned centroid
+          # assign point to cluster:
           clusters[assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
-          merge = TRUE
+          #merge = TRUE
+          # if cluster centroid is within radius, then compute new centroid as geometric mean including new cluster(s):
         }
       }
-    }
+    #}
   }
 }
 
