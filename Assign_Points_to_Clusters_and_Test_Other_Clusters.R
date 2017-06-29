@@ -167,11 +167,79 @@ computeNewCentroid_and_AssignPointToCluster <- function(sampleID, assignedPoints
   #    for (unassignedClusterLabel in unassignedClusterLabels)
 }
 
+computeUnassignedClusterCentroids <- function(clusters){
+  # Given a data.table of clusters, returns a data.table of the unassignedClusterCentroids
+  # Make datatable of unassigned clusters:
+  unassignedClusters = copy(clusters[is.na(assigned_to_point),])
+  # Make copy of unassigned cluster centroids (to be filled in):
+  unassignedClusterLabels = unique(unassignedClusters[,Label])
+  # convert from factor to numeric:
+  unassignedClusterLabels = as.numeric(unassignedClusterLabels)
+  unassignedClusterCentroids = data.table(Label = unassignedClusterLabels)#, X =  double(), Y = double(), Z = double(), assigned_to_point = NA)
+  setkey(unassignedClusterCentroids)
+  unassignedClusterCentroids[,X:= double()]
+  unassignedClusterCentroids[,Y:= double()]
+  #just in 2D for now
+  #unassignedClusterCentroids[,Z:= double()]
+  unassignedClusterCentroids[,assigned_to_point := NA]
+  
+  # compute unassignedClusterCentroids:
+  for (unassignedClusterLabel in unassignedClusterLabels){
+    X = clusters[Label == unassignedClusterLabel, X]
+    Y = clusters[Label == unassignedClusterLabel, Y]
+    clusterCentroid = colMeans(cbind(X, Y))
+    unassignedClusterCentroids[Label == unassignedClusterLabel, X := clusterCentroid[1]]
+    unassignedClusterCentroids[Label == unassignedClusterLabel, Y := clusterCentroid[2]]
+    #print("One iteration of for loop computing and storing unassigned cluster centroid.")
+  }
+  return(unassignedClusterCentroids)
+}
+
+
+testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assignedPoints, clusters){
+  # Updates clusters by reference (does not return a new object)
+  # predictedCentroid: list of x, y predicted coordinate of center of true cluster (updated recursively)
+  # pointID: string refers to the id of the point in assignedPoints for which we are searching for clusters that belong to it.
+  # assignedPoints: data.table of points with assignments to clusters (values in assignedPoints$cluster_ID)
+  # clusters: data.table containing clustered points
+
+  center_x = predictedCentroid[1]
+  center_y = predictedCentroid[2]
+  #center_x = assignedPoints[Sample_ID == pointID, X_closest_cluster_centroid]
+  #center_y = assignedPoints[Sample_ID == pointID, Y_closest_cluster_centroid]
+  radius = assignedPoints[Sample_ID == pointID, Minor_Axis]
+  
+  # Compute remaining unassigned cluster labels:
+  unassignedClusterLabels = unique(clusters[is.na(assigned_to_point), assigned_to_point])
+  
+  # Compute unassignedClusterCentroids:
+  unassignedClusterCentroids = computeUnassignedClusterCentroids(clusters)
+  for (unassignedClusterLabel in unassignedClusterLabels){
+    # test if point falls within minor axis circle from assigned cluster centroid:
+    #x, center_x, y, center_y, radius
+    x = unassignedClusterCentroids[Label == unassignedClusterLabel, X]
+    y = unassignedClusterCentroids[Label == unassignedClusterLabel, y]
+    if (testIfPointWithinCircle(x = x, center_x = center_x, y = y, center_y = center_y, radius = radius)){
+      #if unassigned cluster centroid within minor_axis radius of assigned centroid
+      # assign point to cluster:
+      clusters[assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
+      
+      # compute newPredictedCentroid from clusters:
+      X = clusters[assigned_to_point == pointID, X]
+      Y = clusters[assigned_to_point == pointID, Y]
+      newPredictedCentroid = colMeans(cbind(X, Y))
+
+      #Recursive call:
+      testAndMergeClustersRecursively(newPredictedCentroid, pointID, assignedPoints, clusters)
+}
+
+
 checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
-  # Function determines if any other clusters should be assigned to the point based on information held in the point (metadata) and, if so,
+  # Function determines if any other clusters should be assigned to the points in assignedPoints
+  # based on information held in the point (metadata) and, if so,
   # assigns the cluster(s) to the point.
   # Assumes that metadata is at the same scale of clusters
-  # returns the clusters
+  # Updates the clusters data.table object by reference.
   
   # First, remove clusters outliers coded as -1:
   clusters = clusters[Label != -1,]
@@ -186,38 +254,18 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
     clusters[Label == point$cluster_ID, assigned_to_point := point$Sample_ID]
   }
 
-  # Make datatable of unassigned clusters:
-  unassignedClusters = copy(clusters[is.na(assigned_to_point),])
-  # Make copy of unassigned cluster centroids (to be filled in):
-  unassignedClusterLabels = unique(unassignedClusters[,Label])
-  # convert from factor to numeric:
-  unassignedClusterLabels = as.numeric(unassignedClusterLabels)
-  unassignedClusterCentroids = data.table(Label = unassignedClusterLabels)#, X =  double(), Y = double(), Z = double(), assigned_to_point = NA)
-  setkey(unassignedClusterCentroids)
-  unassignedClusterCentroids[,X:= double()]
-  unassignedClusterCentroids[,Y:= double()]
-  #just in 2D for now
-  #unassignedClusterCentroids[,Z:= double()]
-  unassignedClusterCentroids[,assigned_to_point := NA]
-  # I am here
-  # compute unassignedClusterCentroids:
-  for (unassignedClusterLabel in unassignedClusterLabels){
-    X = clusters[Label == unassignedClusterLabel, X]
-    Y = clusters[Label == unassignedClusterLabel, Y]
-    clusterCentroid = colMeans(cbind(X, Y))
-    unassignedClusterCentroids[Label == unassignedClusterLabel, X := clusterCentroid[1]]
-    unassignedClusterCentroids[Label == unassignedClusterLabel, Y := clusterCentroid[2]]
-    #print("One iteration of for loop computing and storing unassigned cluster centroid.")
-  }
-
   # Now loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
   pointIDs = assignedPoints$Sample_ID
   for(pointID in pointIDs){
     # I am here: this logic isn't right:
     #merge = TRUE
     #while(merge == TRUE){
+    #instead, put all of this inside of recursive function:
+    #this#this#this#this#this#this#this#this#this#this#this#this#this#this#this
     center_x = assignedPoints[Sample_ID == pointID, X_closest_cluster_centroid]
     center_y = assignedPoints[Sample_ID == pointID, Y_closest_cluster_centroid]
+    predictedCentroid = c(center_x, center_y)
+
     radius = assignedPoints[Sample_ID == pointID, Minor_Axis]
 
       # Compute remaining unassigned cluster labels:
@@ -238,6 +286,7 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
           # if cluster centroid is within radius, then compute new centroid as geometric mean including new cluster(s):
         }
       }
+    #^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this#^this
     #}
   }
 }
