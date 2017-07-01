@@ -1,5 +1,0 @@
-another way to test whether another cluster belongs to a point would be to loop through the unassigned cluster centroids
-and check whether or not any unassigned cluster centroid falls within the Minor_Axis radius from the predicted true cluster centroid.  
-If so: 
-	"Merge" clusters by setting the point sample id inside clusters[] to the point and computing new predicted true cluster centroid (as the geometric mean of all clusters assigned to the point).
-	Repeat until there are no unassigned cluster centroids that fall within the Minor_Axis radius from the predicted true cluster centroid
