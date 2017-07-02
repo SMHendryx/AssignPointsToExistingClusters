@@ -11,7 +11,6 @@
 library(data.table)
 
 
-
 #helper functions first:
 printer <- function(string, variable){
   print(paste0(string, variable))
@@ -49,7 +48,6 @@ nmodes <- function(x) {
 
 #algos:
 ####################################################################################################################################################################################
-
 
 thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10, plotDensity = FALSE){
   ######################################################################################################################################################
@@ -214,6 +212,10 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
   #center_x = assignedPoints[Sample_ID == pointID, X_closest_cluster_centroid]
   #center_y = assignedPoints[Sample_ID == pointID, Y_closest_cluster_centroid]
   radius = assignedPoints[Sample_ID == pointID, Minor_Axis]
+
+  if(is.na(radius)){
+    stop("radius does not exist.  Make sure all points have a radius value.")
+  }
   
   # Compute remaining unassigned cluster labels:
   unassignedClusterLabels = unique(clusters[is.na(assigned_to_point), Label])
@@ -237,9 +239,9 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
       print(paste0("Cluster centroid falls within radius."))
       #if unassigned cluster centroid within minor_axis radius of assigned centroid,
       # assign point to cluster:
-      # ERROR HERE: i am here:
       clusters[Label == unassignedClusterLabel, assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
-      
+      # add column to indicate if cluster has been merged with another cluster to represent some single point:
+      clusters[Label == unassignedClusterLabel, merged := TRUE]
       # compute newPredictedCentroid from clusters:
       X = clusters[assigned_to_point == pointID, X]
       Y = clusters[assigned_to_point == pointID, Y]
@@ -262,8 +264,8 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   
   # First, remove clusters outliers coded as -1:
   clusters = clusters[Label != -1,]
-  # since factor, Label -1 still exists as level, so:
-  clusters[,Label := droplevels(Label)]
+  # if Label is factor, Label -1 still exists as level, so:
+  #clusters[,Label := droplevels(Label)]
   
   # convert assignedPoints$Sample_ID from factor (likely default) to character:
   assignedPoints[,Sample_ID := as.character(Sample_ID)]
@@ -280,8 +282,6 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   
   # Now loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
   # Making list of those points that are uniquely assigned to a cluster, as it is unlikely that the cluster is over-segmented if more than one point has been assigned to the cluster:
-  rm(uniquelyAssignedPointIDs)
-  rm(uniquelyAssignedPointIDs_i)
   uniquelyAssignedPointIDs = vector(mode = "character")
   assignedClusterIDs = unique(assignedPoints$cluster_ID)
   
@@ -304,5 +304,6 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
     
     testAndMergeClustersRecursively(predictedCentroid = predictedCentroid, pointID = pointID, assignedPoints = assignedPoints, clusters = clusters)
   }
+  return(clusters)
 }
 
