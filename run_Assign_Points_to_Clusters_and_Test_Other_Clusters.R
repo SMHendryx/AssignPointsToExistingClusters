@@ -3,7 +3,7 @@
 # Ideally, if we have a dataset of points, where each point represents a cluster in another data set, there would be a one-to-one 
 # correspondence between the two data sets, such that for each point there is one and only one cluster to which it corresponds and
 # such that it is unmistakable which point corresponds to which cluster.  
-# Though, this is not usually the case.  These algorithms present one approach to 
+# Though, this is not usually the case.  These algorithms present one approach to resolving the differences in representation. 
 # 
 # Created by Sean Hendryx
 # seanmhendryx@email.arizona.edu https://github.com/SMHendryx/assignPointsToClusters
@@ -54,9 +54,9 @@ assignedPoints = assignPointsToClusters(points, clusters)
 
 # Now run checkIfPointRepresentsMoreThanOneCluster
 startTime = Sys.time()
-clusters = checkIfPointRepresentsMoreThanOneCluster(assignedPoints, clusters)
+assignedPoints = checkIfPointRepresentsMoreThanOneCluster(assignedPoints, clusters)
 
-write.csv(clusters, "clusters_assigned_to_points.csv")
+write.csv(assignedPoints, "in_situ_points_wit_cluster_assignments.csv")
 endTime = Sys.time()
 timeTaken = endTime - startTime
 timeTaken

@@ -5,7 +5,24 @@
 # such that it is unmistakable which point corresponds to which cluster.  
 # Though, this is not usually the case.
 # 
-# Authored by Sean Hendryx while working at the University of Arizona
+# Created by Sean Hendryx
+# seanmhendryx@email.arizona.edu https://github.com/SMHendryx/assignPointsToClusters
+# Copyright (c)  2017 Sean Hendryx
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+####################################################################################################################################################################################
+
 
 #load packages:
 library(data.table)
@@ -243,6 +260,13 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
       clusters[Label == unassignedClusterLabel, assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
       # add column to indicate if cluster has been merged with another cluster to represent some single point:
       clusters[Label == unassignedClusterLabel, merged := TRUE]
+      # add cluster label to list of clusters in assignedPoints:
+      # i am here
+      #clusterIDListLength = length(assignedPoints[Sample_ID == pointID, list_cluster_IDs])
+      clusterIDList = assignedPoints[Sample_ID == pointID, list_cluster_IDs]
+      # add previously unassigned cluster label to assignedPoints[Sample_ID==pointID, list_cluster_IDs]:
+      clusterIDList[[length(clusterIDList) + 1]] = unique(clusters[Label == unassignedClusterLabel, Label])
+      assignedPoints[Sample_ID == pointID, list_cluster_IDs := list(list(clusterIDList))]
       # compute newPredictedCentroid from clusters:
       X = clusters[assigned_to_point == pointID, X]
       Y = clusters[assigned_to_point == pointID, Y]
@@ -261,8 +285,20 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   # based on information held in the point (metadata) and, if so,
   # assigns the cluster(s) to the point.
   # Assumes that metadata is at the same scale of clusters
-  # Updates the clusters data.table object by reference.
+  # Returns assignedPoints with new column list_cluster_IDs, which contains a list of the clusters which the points represent
   
+  print("Resolving over-segmentation of clusters.  Checking all points to see if any point represents more than one cluster.")
+  
+  #First add list column, taking the first element as primary_cluster_ID:
+  assignedPoints[, list_cluster_IDs := vector("list")]
+  for(i in seq(nrow(assignedPoints))){
+    # Adding assignedPoint ID to clusters:
+    clusterID = assignedPoints[i,primary_cluster_ID]
+    printer("clusterID: ", clusterID)
+    assignedPoints[i, list_cluster_IDs := list(list(c(clusterID)))]
+  }
+  
+  # Updates the clusters data.table object by reference.  
   # First, remove clusters outliers coded as -1:
   clusters = clusters[Label != -1,]
   # if Label is factor, Label -1 still exists as level, so:
@@ -305,6 +341,7 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
     
     testAndMergeClustersRecursively(predictedCentroid = predictedCentroid, pointID = pointID, assignedPoints = assignedPoints, clusters = clusters)
   }
-  return(clusters)
+  # instead of returning clusters, add list of cluster_IDs column to assignedPoints:
+  return(assignedPoints)
 }
 
