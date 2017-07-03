@@ -260,13 +260,15 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
       clusters[Label == unassignedClusterLabel, assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
       # add column to indicate if cluster has been merged with another cluster to represent some single point:
       clusters[Label == unassignedClusterLabel, merged := TRUE]
+
       # add cluster label to list of clusters in assignedPoints:
-      # i am here
       #clusterIDListLength = length(assignedPoints[Sample_ID == pointID, list_cluster_IDs])
       clusterIDList = assignedPoints[Sample_ID == pointID, list_cluster_IDs]
       # add previously unassigned cluster label to assignedPoints[Sample_ID==pointID, list_cluster_IDs]:
       clusterIDList[[length(clusterIDList) + 1]] = unique(clusters[Label == unassignedClusterLabel, Label])
       assignedPoints[Sample_ID == pointID, list_cluster_IDs := list(list(clusterIDList))]
+      assignedPoints[Sample_ID == pointID, merged := TRUE]
+      
       # compute newPredictedCentroid from clusters:
       X = clusters[assigned_to_point == pointID, X]
       Y = clusters[assigned_to_point == pointID, Y]

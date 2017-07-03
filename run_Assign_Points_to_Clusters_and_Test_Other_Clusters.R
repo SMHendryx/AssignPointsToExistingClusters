@@ -53,13 +53,13 @@ points = points[Sample_ID %in% validIDs,]
 assignedPoints = assignPointsToClusters(points, clusters)
 
 # Now run checkIfPointRepresentsMoreThanOneCluster
-startTime = Sys.time()
+startTime2 = Sys.time()
 assignedPoints = checkIfPointRepresentsMoreThanOneCluster(assignedPoints, clusters)
-
-write.csv(assignedPoints, "in_situ_points_wit_cluster_assignments.csv")
 endTime = Sys.time()
-timeTaken = endTime - startTime
-timeTaken
+endTime - startTime
+endTime - startTime2
+
+write.csv(assignedPoints, "in_situ_points_with_cluster_assignments.csv")
 
 ################################################################################################################################################################################################################################################
 #####  PLOTS ##################################################################################################################################################################################################################################################################################################################################################################################
