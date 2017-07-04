@@ -78,7 +78,7 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
   # Return the distance of the closest in situ coordinate (i.e. "point" in points) to each cluster centroid in data.table:
   # .SD[] makes Subset of Datatable
   # https://stackoverflow.com/questions/33436647/group-by-and-select-min-date-with-data-table
-  closestPoints = points[,.SD[which.min(distance_to_closest_cluster_member)], by = primary_cluster_ID]
+  closestPoints = points[,.SD[which.min(distance_to_closest_cluster_member)], by = cluster_ID]
 
   # Compute the threshold beyond which it is unlikely that the point corresponds to the cluster 
   #   (or put another way, that the cluster represents the point):
@@ -102,24 +102,24 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
 }
 
 # vectorized:
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', primary_cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
+assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
   # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
   # flags unlikely correspondences based on distance threshold,
   # and then determines if any other clusters should be assigned to that point based on information held in the point.
     # if we have a matrix of point coordinates and each of the points represents a cluster, the algorithm assigns each point to a cluster.
-  # if outliers are coded as -1 in primary_cluster_ID_col_name, they will be assumed to not be clusters
+  # if outliers are coded as -1 in cluster_ID_col_name, they will be assumed to not be clusters
   # :Param points: data.table object with columns 'X' and 'Y'
   # :Param clusters: data.table object with columns 'X', 'Y', and 'Label'
-  # :Params x_col_name = 'X', y_col_name = 'Y', primary_cluster_ID_col_name = 'Label': refer to columns in point data.table
+  # :Params x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label': refer to columns in point data.table
   #check if column already exists:
-  if(any(names(points) == "primary_cluster_ID")){
-    stop("primary_cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
+  if(any(names(points) == "cluster_ID")){
+    stop("cluster_ID already exists in points.  points should not include cluster ids prior to running assignPointsToClusters function.")
   }
   #first copy points and clusters to be modified locally (not by reference)
   points = copy(points)
   clusters = copy(clusters)
   #if doesn't exist, add:
-  points[,primary_cluster_ID := integer()]
+  points[,cluster_ID := integer()]
   
   # for checkIfPointRepresentsMoreThanOneCluster
   points[,x_closestCentroid := double()]
@@ -127,7 +127,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
   
   # remove outliers coded as -1:
   clusters = clusters[Label != -1,]
-  clusterLabels = unique(clusters[,primary_cluster_ID_col_name, with = FALSE])
+  clusterLabels = unique(clusters[,cluster_ID_col_name, with = FALSE])
   #print(paste0("clusterLabels", clusterLabels))
 
   # Now loop through points and find each point's closest cluster
@@ -148,7 +148,7 @@ assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_nam
     closestMember = clusters[, .SD[which.min(distance_to_point)]]
     #
     print(paste0("closestMember: ", closestMember$Label))
-    points[i,primary_cluster_ID := closestMember$Label]
+    points[i,cluster_ID := closestMember$Label]
     print(paste0("closest cluster member distance = ", closestMember$distance_to_point))
     points[i,distance_to_closest_cluster_member := closestMember$distance_to_point]
     points[i, X_closest_cluster_member := closestMember$X]
@@ -220,17 +220,17 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
   # Updates clusters by reference (does not return a new object)
   # predictedCentroid: list of x, y predicted coordinate of center of true cluster (updated recursively)
   # pointID: string refers to the id of the point in assignedPoints for which we are searching for clusters that belong to it.
-  # assignedPoints: data.table of points with assignments to clusters (values in assignedPoints$primary_cluster_ID)
+  # assignedPoints: data.table of points with assignments to clusters (values in assignedPoints$cluster_ID)
   # clusters: data.table containing clustered points
   # note that assignedPoints and clusters are two different datasets that represent the same things in the real world but have some small difference in their representation of the real world objects
-
+  
   print("Testing clusters.")
   center_x = predictedCentroid[1]
   center_y = predictedCentroid[2]
   #center_x = assignedPoints[Sample_ID == pointID, X_closest_cluster_centroid]
   #center_y = assignedPoints[Sample_ID == pointID, Y_closest_cluster_centroid]
   radius = assignedPoints[Sample_ID == pointID, Minor_Axis]
-
+  
   if(is.na(radius)){
     stop("radius does not exist.  Make sure all points have a radius value.")
   }
@@ -240,7 +240,7 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
   
   # Compute unassignedClusterCentroids:
   unassignedClusterCentroids = computeUnassignedClusterCentroids(clusters)
-
+  
   for (unassignedClusterLabel in unassignedClusterLabels){
     # test if point falls within minor axis circle from assigned cluster centroid:
     #x, center_x, y, center_y, radius
@@ -260,21 +260,23 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
       clusters[Label == unassignedClusterLabel, assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
       # add column to indicate if cluster has been merged with another cluster to represent some single point:
       clusters[Label == unassignedClusterLabel, merged := TRUE]
-
-      # add cluster label to list of clusters in assignedPoints:
-      #clusterIDListLength = length(assignedPoints[Sample_ID == pointID, list_cluster_IDs])
-      clusterIDList = assignedPoints[Sample_ID == pointID, list_cluster_IDs]
-      # add previously unassigned cluster label to assignedPoints[Sample_ID==pointID, list_cluster_IDs]:
-      clusterIDList[[length(clusterIDList) + 1]] = unique(clusters[Label == unassignedClusterLabel, Label])
-      assignedPoints[Sample_ID == pointID, list_cluster_IDs := list(list(clusterIDList))]
       assignedPoints[Sample_ID == pointID, merged := TRUE]
+
+      # Add new row recording the point and cluster correspondence
+      newCorrespondenceID = (max(assignedPoints[,correspondence_ID]) + 1)
+      newAssignedPointsRow = assignedPoints[Sample_ID == pointID]
+      newAssignedPointsRow$correspondence_ID = newCorrespondenceID
+      assignedPoints = rbind(assignedPoints, newAssignedPointsRow)
+      # Add previously unassigned cluster label to assignedPoints
+      assignedPoints[correspondence_ID == newCorrespondenceID, cluster_ID := unassignedClusterLabel]
+      assignedPoints[correspondence_ID == newCorrespondenceID, merged := TRUE]
       
       # compute newPredictedCentroid from clusters:
       X = clusters[assigned_to_point == pointID, X]
       Y = clusters[assigned_to_point == pointID, Y]
       newPredictedCentroid = colMeans(cbind(X, Y))
       print(paste0("New predicted centroid: ", newPredictedCentroid))
-
+      
       #Recursive call:
       print("Starting recursive call to testAndMergeClustersRecursively:")
       testAndMergeClustersRecursively(newPredictedCentroid, pointID, assignedPoints, clusters)
@@ -287,17 +289,14 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   # based on information held in the point (metadata) and, if so,
   # assigns the cluster(s) to the point.
   # Assumes that metadata is at the same scale of clusters
-  # Returns assignedPoints with new column list_cluster_IDs, which contains a list of the clusters which the points represent
+  # Returns assignedPoints with new column correspondence_ID, which contains the id of a unique correspondence relationship between a point and a cluster.
   
   print("Resolving over-segmentation of clusters.  Checking all points to see if any point represents more than one cluster.")
   
-  #First add list column, taking the first element as primary_cluster_ID:
-  assignedPoints[, list_cluster_IDs := vector("list")]
+  #First add correspondence column:
   for(i in seq(nrow(assignedPoints))){
-    # Adding assignedPoint ID to clusters:
-    clusterID = assignedPoints[i,primary_cluster_ID]
-    printer("clusterID: ", clusterID)
-    assignedPoints[i, list_cluster_IDs := list(list(c(clusterID)))]
+    assignedPoints[i,correspondence_ID := i]
+    #printer("correspondence_ID: ", i)
   }
   
   # Updates the clusters data.table object by reference.  
@@ -314,7 +313,7 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   for(i in seq(nrow(assignedPoints))){
     # Adding assignedPoint ID to clusters:
     point = copy(assignedPoints[i,])
-    clusters[Label == point$primary_cluster_ID, assigned_to_point := point$Sample_ID]
+    clusters[Label == point$cluster_ID, assigned_to_point := point$Sample_ID]
   }
   
   clusters[,assigned_to_point := as.character(assigned_to_point)] 
@@ -322,11 +321,11 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   # Now loop through assignedPoints, to see if any unassigned cluster centroids fall within Minor_Axis radius from assigned cluster centroid:
   # Making list of those points that are uniquely assigned to a cluster, as it is unlikely that the cluster is over-segmented if more than one point has been assigned to the cluster:
   uniquelyAssignedPointIDs = vector(mode = "character")
-  assignedClusterIDs = unique(assignedPoints$primary_cluster_ID)
+  assignedClusterIDs = unique(assignedPoints$cluster_ID)
   
   for (id in assignedClusterIDs){
-    if(nrow(assignedPoints[primary_cluster_ID == id]) == 1) {
-      uniquelyAssignedPointIDs_i = assignedPoints[primary_cluster_ID == id, Sample_ID]
+    if(nrow(assignedPoints[cluster_ID == id]) == 1) {
+      uniquelyAssignedPointIDs_i = assignedPoints[cluster_ID == id, Sample_ID]
       # append two vectors together:
       uniquelyAssignedPointIDs = c(uniquelyAssignedPointIDs, uniquelyAssignedPointIDs_i)
       #printer("uniquelyAssignedPointIDs: ", uniquelyAssignedPointIDs)
