@@ -250,11 +250,11 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
     y = unassignedClusterCentroids[Label == unassignedClusterLabel, Y]
 
     print("testIfPointWithinCircle: ")
-    printer("x: ", x)
-    printer("center_x: ", center_x)
-    printer("y: ", y)
-    printer("center_y: ", center_y)
-    printer("radius: ", radius)
+    #printer("x: ", x)
+    #printer("center_x: ", center_x)
+    #printer("y: ", y)
+    #printer("center_y: ", center_y)
+    #printer("radius: ", radius)
     if (testIfPointWithinCircle(x = x, center_x = center_x, y = y, center_y = center_y, radius = radius)){
       print(paste0("Cluster centroid falls within radius."))
       #if unassigned cluster centroid within minor_axis radius of assigned centroid,
@@ -264,23 +264,23 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
       clusters[Label == unassignedClusterLabel, merged := TRUE]
       assignedPoints[Sample_ID == pointID, merged := TRUE]
       printer("pointID that represents more than one cluster: ", pointID)
-      printer("correspondence_ID: ", assignedPoints[Sample_ID == pointID, correspondence_ID])
-
+      #printer("correspondence_ID: ", assignedPoints[Sample_ID == pointID, correspondence_ID])
+      
       # Add new row recording the point and cluster correspondence
       newCorrespondenceID = (max(assignedPoints[,correspondence_ID]) + 1)
-      printer("correspondence_ID on newly assigned cluster: ", newCorrespondenceID)
-
+      #printer("correspondence_ID on newly assigned cluster: ", newCorrespondenceID)
+      
       newAssignedPointsRow = copy(assignedPoints[Sample_ID == pointID])
-      printer("newAssignedPointsRow: ", newAssignedPointsRow)
+      #printer("newAssignedPointsRow: ", newAssignedPointsRow)
       newAssignedPointsRow[,correspondence_ID := newCorrespondenceID]
-      printer("newAssignedPointsRow with changed correspondence_ID: ", newAssignedPointsRow)
+      #printer("newAssignedPointsRow with changed correspondence_ID: ", newAssignedPointsRow)
       assignedPoints = rbindlist(list(assignedPoints, newAssignedPointsRow))
-      printer("assignedPoints[correspondence_ID == newCorrespondenceID,] ", assignedPoints[correspondence_ID == newCorrespondenceID,])
+      #printer("assignedPoints[correspondence_ID == newCorrespondenceID,] ", assignedPoints[correspondence_ID == newCorrespondenceID,])
       
       # Add previously unassigned cluster label to assignedPoints
       assignedPoints[correspondence_ID == newCorrespondenceID, cluster_ID := unassignedClusterLabel]
       assignedPoints[correspondence_ID == newCorrespondenceID, merged := TRUE]
-      printer("after merged := true, assignedPoints[correspondence_ID == newCorrespondenceID,] returns:", assignedPoints[correspondence_ID == newCorrespondenceID,])
+      #printer("after merged := true, assignedPoints[correspondence_ID == newCorrespondenceID,] returns:", assignedPoints[correspondence_ID == newCorrespondenceID,])
       
       
       # compute newPredictedCentroid from clusters:

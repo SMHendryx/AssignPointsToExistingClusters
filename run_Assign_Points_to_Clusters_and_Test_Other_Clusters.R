@@ -62,22 +62,6 @@ endTime - startTime
 endTime - startTime2
 
 
-# extract cluster id dictionary:
-clusterIDDict = data.table(Sample_ID = assignedPoints[,Sample_ID], merged = assignedPoints[,merged])
-
-for(i in seq(nrow(clusterIDDict))){
-  if(is.na(clusterIDDict[i, merged]) | clusterIDDict[i, merged] == FALSE){
-
-  }
-
-  # Adding assignedPoint ID to clusters:
-  clusterID = assignedPoints[i,primary_cluster_ID]
-  printer("clusterID: ", clusterID)
-  assignedPoints[i, list_cluster_IDs := list(list(c(clusterID)))]
-}
-  
-
-
 write.csv(assignedPoints, "in_situ_points_with_cluster_assignments.csv")
 
 ################################################################################################################################################################################################################################################
@@ -88,8 +72,9 @@ write.csv(assignedPoints, "in_situ_points_with_cluster_assignments.csv")
 clusters$Label = factor(clusters$Label)
 # make qualitative color palette:
 # 82 "color blind friendly" colors from: http://tools.medialab.sciences-po.fr/iwanthue/
-# with outliers set to black
-cbf = c("#000000", "#be408c",
+# with outliers set to black: "#000000",
+cbf = c(#"#000000", 
+  "#be408c",
   "#4cdc8b",
   "#b1379e",
   "#90d15e",
@@ -195,6 +180,12 @@ renderStartTime = Sys.time()
 ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(Label)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
 #testing adding assigned_to_point column to clusters:
 #ggp = ggplot() + geom_point(mapping = aes(x = X, y = Y, color = factor(assigned_to_point)), data = plotDT, size = .75) + theme_bw() + theme(legend.position="none") + scale_colour_manual(values = cbf) 
+
+#PLOTTING ONLY THOSE POINTS THAT REPRESENT CLUSTERS WHICH HAVE BEEN MERGED:
+ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE & merged == TRUE,], mapping = aes(x = X, y = Y), shape = 8)
+#ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE,], mapping = aes(x = X_closest_cluster_centroid, y = Y_closest_cluster_centroid), shape = 13)
+ggp
+
 
 ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE,], mapping = aes(x = X, y = Y), shape = 8)
 ggp = ggp + geom_point(data = assignedPoints[closest_cluster_outside_threshold == FALSE,], mapping = aes(x = X_closest_cluster_centroid, y = Y_closest_cluster_centroid), shape = 13)
