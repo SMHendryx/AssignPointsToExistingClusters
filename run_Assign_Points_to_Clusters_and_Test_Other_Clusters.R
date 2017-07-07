@@ -29,6 +29,7 @@ startTime = Sys.time()
 #load packages:
 library(data.table)
 library(ggplot2)
+library(feather)
 source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClusters.R")
 
 
@@ -53,11 +54,29 @@ points = points[Sample_ID %in% validIDs,]
 assignedPoints = assignPointsToClusters(points, clusters)
 
 # Now run checkIfPointRepresentsMoreThanOneCluster
+#I am here:
 startTime2 = Sys.time()
 assignedPoints = checkIfPointRepresentsMoreThanOneCluster(assignedPoints, clusters)
 endTime = Sys.time()
 endTime - startTime
 endTime - startTime2
+
+
+# extract cluster id dictionary:
+clusterIDDict = data.table(Sample_ID = assignedPoints[,Sample_ID], merged = assignedPoints[,merged])
+
+for(i in seq(nrow(clusterIDDict))){
+  if(is.na(clusterIDDict[i, merged]) | clusterIDDict[i, merged] == FALSE){
+
+  }
+
+  # Adding assignedPoint ID to clusters:
+  clusterID = assignedPoints[i,primary_cluster_ID]
+  printer("clusterID: ", clusterID)
+  assignedPoints[i, list_cluster_IDs := list(list(c(clusterID)))]
+}
+  
+
 
 write.csv(assignedPoints, "in_situ_points_with_cluster_assignments.csv")
 
