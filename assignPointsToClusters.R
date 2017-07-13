@@ -169,7 +169,7 @@ testIfPointWithinCircle <- function(x, center_x, y, center_y, radius){
   # ported from C, philcolbourn answer: https://stackoverflow.com/questions/481144/equation-for-testing-if-a-point-is-inside-a-circle
   dx = abs(x-center_x)
   dy = abs(y-center_y)
-  printer("dx: ", dx)
+  #printer("dx: ", dx)
   if(dx > radius){
     return(FALSE)
   }
@@ -245,11 +245,11 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
   for (unassignedClusterLabel in unassignedClusterLabels){
     # test if point falls within minor axis circle from assigned cluster centroid:
     #x, center_x, y, center_y, radius
-    print(paste0("Testing unassigned cluster: ", unassignedClusterLabel))
+    #print(paste0("Testing unassigned cluster: ", unassignedClusterLabel))
     x = unassignedClusterCentroids[Label == unassignedClusterLabel, X]
     y = unassignedClusterCentroids[Label == unassignedClusterLabel, Y]
 
-    print("testIfPointWithinCircle: ")
+    #print("testIfPointWithinCircle: ")
     #printer("x: ", x)
     #printer("center_x: ", center_x)
     #printer("y: ", y)
