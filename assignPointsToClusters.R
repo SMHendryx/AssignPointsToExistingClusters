@@ -236,9 +236,9 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
     stop("radius does not exist.  Make sure all points have a radius value.")
   }
   
+  #These two lines of code could only be run once and the data stored to make run faster.  i.e. compute unassigned labels, compute unassigned centroids => store unassigned centroids => remove unassigned centroid if the centroid becomes assigned.
   # Compute remaining unassigned cluster labels:
   unassignedClusterLabels = unique(clusters[is.na(assigned_to_point), Label])
-  
   # Compute unassignedClusterCentroids:
   unassignedClusterCentroids = computeUnassignedClusterCentroids(clusters)
   
@@ -256,7 +256,7 @@ testAndMergeClustersRecursively <- function(predictedCentroid, pointID, assigned
     #printer("center_y: ", center_y)
     #printer("radius: ", radius)
     if (testIfPointWithinCircle(x = x, center_x = center_x, y = y, center_y = center_y, radius = radius)){
-      print(paste0("Cluster centroid falls within radius."))
+      print(paste0("Cluster centroid falls within radius.  Cluster Label: ", unassignedClusterLabel))
       #if unassigned cluster centroid within minor_axis radius of assigned centroid,
       # assign point to cluster:
       clusters[Label == unassignedClusterLabel, assigned_to_point := assignedPoints[Sample_ID == pointID, Sample_ID]]
@@ -356,7 +356,9 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
     
     assignedPoints = testAndMergeClustersRecursively(predictedCentroid = predictedCentroid, pointID = pointID, assignedPoints = assignedPoints, clusters = clusters)
   }
-  # instead of returning clusters, add list of cluster_IDs column to assignedPoints:
+  #remove duplicate rows:
+  assignedPoints = unique(assignedPoints)
+  # instead of returning clusters, add list of cluster_IDs column to assignedPoints and return assignedPoints:
   return(assignedPoints)
 }
 

@@ -38,8 +38,7 @@ source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClus
 setwd("/Users/seanhendryx/DATA/Lidar/SRER/maxLeafAreaOctober2015/OPTICS_Param_Tests/study-area")
 
 # read in clustered point cloud:
-clusters = as.data.table(read.csv("OPTICS_clustered_points_eps_8.3_min_samples_150.csv"))
-colnames(clusters)[1] = 'X'
+clusters = as.data.table(read_feather("OPTICS_clustered_points_eps_8.3_min_samples_150.feather"))
 
 # read in points:
 points = as.data.table(read.csv("/Users/seanhendryx/DATA/SRERInSituData/SRER_Mesq_Tower_In_Situ_Allometry/inSituCoordinatesAndMeasurements.csv"))
