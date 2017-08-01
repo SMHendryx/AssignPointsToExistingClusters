@@ -102,7 +102,7 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
 }
 
 # vectorized:
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
+assignPointsToExistingClusters <- assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
   # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
   # flags unlikely correspondences based on distance threshold,
   # and then determines if any other clusters should be assigned to that point based on information held in the point.
@@ -360,5 +360,25 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
   assignedPoints = unique(assignedPoints)
   # instead of returning clusters, add list of cluster_IDs column to assignedPoints and return assignedPoints:
   return(assignedPoints)
+}
+
+
+
+buildClusterDict <- function(assignedPoints){
+  # Returns a dictionary where each sample ID (point) represents one to many clusters
+  # takes in a datatable that has been run through assignPointsToExistingClusters(...) and checkIfPointRepresentsMoreThanOneCluster(...)
+  # The dictionary is just a list of lists
+  # where the name of each entry is the Sample_ID (training and validation ID) and the entries are the IDs of the clusters (cluster_ID in assignedPoints and Label in clusters)
+  sampleIDs = as.list(unique(assignedPoints[,Sample_ID]))
+  clusterDict = vector(mode = "list", length= length(sampleIDs))
+  names(clusterDict) = sampleIDs
+  i = 1
+  for(sampleID in sampleIDs){
+    clusterIDs_i = assignedPoints[Sample_ID==sampleID, cluster_ID]
+    clusterIDs_i = as.list(clusterIDs_i)
+    clusterDict[[i]] = clusterIDs_i
+    i = i + 1 
+  }
+  return(clusterDict)
 }
 
