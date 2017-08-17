@@ -364,12 +364,12 @@ checkIfPointRepresentsMoreThanOneCluster <- function(assignedPoints, clusters){
 
 
 
-buildClusterDict <- function(assignedPoints){
+buildClusterDict <- function(assignedPoints, evalOutsideThreshold = FALSE){
   # Returns a dictionary where each sample ID (point) represents one to many clusters
   # takes in a datatable that has been run through assignPointsToExistingClusters(...) and checkIfPointRepresentsMoreThanOneCluster(...)
   # The dictionary is just a list of lists
   # where the name of each entry is the Sample_ID (training and validation ID) and the entries are the IDs of the clusters (cluster_ID in assignedPoints and Label in clusters)
-  sampleIDs = as.list(unique(assignedPoints[,Sample_ID]))
+  sampleIDs = as.list(unique(assignedPoints[closest_cluster_outside_threshold == evalOutsideThreshold,Sample_ID]))
   clusterDict = vector(mode = "list", length= length(sampleIDs))
   names(clusterDict) = sampleIDs
   i = 1
@@ -380,5 +380,18 @@ buildClusterDict <- function(assignedPoints){
     i = i + 1 
   }
   return(clusterDict)
+}
+
+assignMergedIDsToClusters <- function(clusterDict, clusters){
+  # Function assigns a new ID of merged clusters to clusters datatable
+  # Run after buildClusterDict(...)
+  clusters = copy(clusters)
+  #note that pointID and sampleID (in points) represent the same thing in this code base
+  pointIDs = names(clusterDict)
+  for(pointID in pointIDs){
+    entry = clusterDict[pointID]
+    clusters[Label %in% entry[[1]],mergedClusterID := pointID]
+  }
+  return(clusters)
 }
 
