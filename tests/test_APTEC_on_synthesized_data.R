@@ -20,10 +20,104 @@
 
 library(data.table)
 library(ggplot2)
+library(truncnorm)
+library(tmvtnorm)
 
+
+generatePointsInCircle = function(numSamples, min = 0, max = 1, plotter = FALSE){
+  # Generates numSamples random points from a uniform distribution, within the radius between [min, max]
+  # Returns a dataframe of x, y points 
+  # adapted from: https://stackoverflow.com/questions/8473056/how-do-i-plot-a-circle-with-points-inside-it-in-r
+  r = runif(numSamples, min = min, max = max)
+  degs = 360*runif(numSamples)
+
+  # First you want to convert the degrees to radians
+  theta = 2*pi*degs/360
+
+  # Plot your points by converting to cartesian
+  xs = r*sin(theta)
+  ys = r*cos(theta)
+  X = cbind(xs, ys)
+  colnames(X) = c('x', 'y')
+
+  #plot:
+  if(plotter){
+    plot(X, xlim=c(-max(r),max(r)),ylim=c(-max(r),max(r)), asp = TRUE, main = "Generated Points")
+    # Add a circle around the points
+    polygon(max(r)*sin(seq(0,2*pi,length.out=100)),max(r)*cos(seq(0,2*pi,length.out=100)))
+  }
+
+  return(X)
+}
+
+t1 = generatePointsInCircle(numSamplesPerTree, plotter = TRUE) + t1Centroid
+dev.new()
+plot(t1, asp = TRUE)
 
 #generate clusters with true cluster identity (cluster) and a made-up clustering (clusterHat):
-c1Centroid = c(2,2)
-c2Centroid = c(4,2)
-c3Centroid = c(6,3)
+t1Centroid = c(2,2)
+t2Centroid = c(4,2)
+t3Centroid = c(7,4)
 
+#generate sample points using truncated norm:
+numSamplesPerTree = 1000
+radius = 1.0
+
+dt = data.table(x = numeric(), y = numeric(), tree = character())
+trees = c('t1', 't2', 't3')
+centroids = c(c(2,2), c(4,2), c(7,4))
+centroids = matrix(centroids, nrow = length(trees), byrow = TRUE)
+i = 1
+for(tree in trees){
+  rm(X)
+  print(tree)
+  X = generatePointsInCircle(numSamplesPerTree)
+  X = t(t(X) + centroids[i,])
+  X = as.data.table(X)
+  X$tree = tree
+  dt = rbind(dt, X)
+  i = i + 1
+}
+
+# plot:
+p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
+
+# Add cluster labels
+dt[, Label := ifelse(tree == 't3', 'c2', 'c1')]
+
+p2 = ggplot(data = dt, mapping = aes(x, y, color = Label)) + geom_point() + theme_bw() + coord_equal()
+
+
+
+
+
+
+
+
+#makes square:
+genSamples_rtruncnorm = function(numSamplesPerTree, radius){
+  t1x = t1Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t1y = t1Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t1 = cbind(t1x, t1y)
+  colnames(t1) = c('x', 'y')
+  t1 = as.data.table(t1)
+  t1$tree = 't1'
+
+  t2x = t2Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t2y = t2Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t2 = cbind(t2x, t2y)
+  colnames(t2) = c('x', 'y')
+  t2 = as.data.table(t2)
+  t2$tree = 't2'
+
+  t3x = t3Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t3y = t3Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
+  t3 = cbind(t3x, t3y)
+  colnames(t3) = c('x', 'y')
+  t3 = as.data.table(t3)
+  t3$tree = 't3'
+
+  dt = rbindlist(list(t1, t2,t3))
+
+  p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
+}
