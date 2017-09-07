@@ -20,8 +20,8 @@
 
 library(data.table)
 library(ggplot2)
-library(truncnorm)
-library(tmvtnorm)
+#library(truncnorm)
+#library(tmvtnorm)
 
 
 generatePointsInCircle = function(numSamples, min = 0, max = 1, plotter = FALSE){
@@ -49,6 +49,27 @@ generatePointsInCircle = function(numSamples, min = 0, max = 1, plotter = FALSE)
 
   return(X)
 }
+
+generatePointOnCircle = function(center,r){
+  # generates a point on the circle with a center at the two element vector center with radius r.
+  numPoints = 1
+  
+  angle = runif(numPoints,0)
+
+  x = center[1] + (r * cos(angle))
+  y = center[2] + (r * sin(angle))
+
+  point = c(x,y)
+
+  return(point)
+}
+
+#test generatePointOnCircle():
+r = 1
+testCenter = c(2,2)
+testPoint = generatePointOnCircle(center, r)
+sqrt((testPoint[1]-testCenter[1])^2 + (testPoint[2]-testCenter[2])^2) == r
+
 
 t1 = generatePointsInCircle(numSamplesPerTree, plotter = TRUE) + t1Centroid
 dev.new()
@@ -78,6 +99,22 @@ for(tree in trees){
   dt = rbind(dt, X)
   i = i + 1
 }
+
+# Now generate the points that are to be assigned to existing clusters:
+points = data.table(x = rep(0.0, length(trees)), y = rep(0.0, length(trees)), tree = trees)
+r = 1.0
+i = 1
+for(tree in trees){
+  point = generatePointOnCircle(centroids[i,], r = r)
+  points[tree == tree, x := point[1]]
+  points[tree == tree, y := point[2]]
+  i = i + 1
+}
+
+# add noise
+noisyPoints = copy(points)
+noisyPoints[,x := x + rnorm(3, sd = .05)]
+noisyPoints[,y := y + rnorm(3, sd = .05)]
 
 # plot:
 p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
