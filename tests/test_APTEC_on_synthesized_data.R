@@ -104,10 +104,11 @@ for(tree in trees){
 points = data.table(x = rep(0.0, length(trees)), y = rep(0.0, length(trees)), tree = trees)
 r = 1.0
 i = 1
+setkey(points, tree)
 for(tree in trees){
   point = generatePointOnCircle(centroids[i,], r = r)
-  points[tree == tree, x := point[1]]
-  points[tree == tree, y := point[2]]
+  points[tree, x := point[1]]
+  points[tree, y := point[2]]
   i = i + 1
 }
 
@@ -123,9 +124,13 @@ p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_
 dt[, Label := ifelse(tree == 't3', 'c2', 'c1')]
 
 p2 = ggplot(data = dt, mapping = aes(x, y, color = Label)) + geom_point() + theme_bw() + coord_equal()
+#add noisyPoints:
+p2 = p2 + geom_point(data = noisyPoints, mapping = aes(x = x, y = y, color = tree), shape = 8, size = 5)
+p2 = p2 + guides(colour = guide_legend(override.aes = list(shape = c(16,16,8,8,8))))
 
+# Now structure data to run through APTEC:
 
-
+# Run APTEC on synthesized points and clusters:
 
 
 
