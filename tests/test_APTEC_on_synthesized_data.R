@@ -67,10 +67,11 @@ generatePointOnCircle = function(center,r){
 #test generatePointOnCircle():
 r = 1
 testCenter = c(2,2)
-testPoint = generatePointOnCircle(center, r)
+t1Centroid = c(2,2)
+testPoint = generatePointOnCircle(testCenter, r)
 sqrt((testPoint[1]-testCenter[1])^2 + (testPoint[2]-testCenter[2])^2) == r
 
-
+numSamplesPerTree = 1000
 t1 = generatePointsInCircle(numSamplesPerTree, plotter = TRUE) + t1Centroid
 dev.new()
 plot(t1, asp = TRUE)
@@ -120,7 +121,7 @@ noisyPoints[,y := y + rnorm(3, sd = .05)]
 # plot:
 p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
 
-# Add cluster labels
+# Add clustering labels
 dt[, Label := ifelse(tree == 't3', 'c2', 'c1')]
 
 p2 = ggplot(data = dt, mapping = aes(x, y, color = Label)) + geom_point() + theme_bw() + coord_equal()
@@ -129,37 +130,20 @@ p2 = p2 + geom_point(data = noisyPoints, mapping = aes(x = x, y = y, color = tre
 p2 = p2 + guides(colour = guide_legend(override.aes = list(shape = c(16,16,8,8,8))))
 
 # Now structure data to run through APTEC:
+dt[,X := x]
+dt[,x := NULL]
+dt[,Y := y]
+dt[,y := NULL]
+
+noisyPoints[,X := x]
+noisyPoints[,x := NULL]
+noisyPoints[,Y := y]
+noisyPoints[,y := NULL]
 
 # Run APTEC on synthesized points and clusters:
+source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClusters.R")
+assignedPoints = assignPointsToClusters(noisyPoints, dt)
+#Passes Perfectly!
 
 
 
-
-
-#makes square:
-genSamples_rtruncnorm = function(numSamplesPerTree, radius){
-  t1x = t1Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t1y = t1Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t1 = cbind(t1x, t1y)
-  colnames(t1) = c('x', 'y')
-  t1 = as.data.table(t1)
-  t1$tree = 't1'
-
-  t2x = t2Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t2y = t2Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t2 = cbind(t2x, t2y)
-  colnames(t2) = c('x', 'y')
-  t2 = as.data.table(t2)
-  t2$tree = 't2'
-
-  t3x = t3Centroid[1] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t3y = t3Centroid[2] + rtruncnorm(numSamplesPerTree, a=-radius, b=radius, mean = 0, sd = 1)
-  t3 = cbind(t3x, t3y)
-  colnames(t3) = c('x', 'y')
-  t3 = as.data.table(t3)
-  t3$tree = 't3'
-
-  dt = rbindlist(list(t1, t2,t3))
-
-  p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
-}
