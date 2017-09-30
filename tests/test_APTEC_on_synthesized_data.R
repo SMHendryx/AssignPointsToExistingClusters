@@ -20,6 +20,8 @@
 
 library(data.table)
 library(ggplot2)
+library(MLmetrics)
+#library(dplyr)
 #library(truncnorm)
 #library(tmvtnorm)
 
@@ -121,10 +123,10 @@ noisyPoints[,y := y + rnorm(3, sd = .05)]
 # plot:
 p = ggplot(data = dt, mapping = aes(x, y, color = tree)) + geom_point() + theme_bw() + coord_equal()
 
-# Add clustering labels
+# Add clustering labels. THE TRUTH.
 dt[, Label := ifelse(tree == 't3', 'c2', 'c1')]
 
-p2 = ggplot(data = dt, mapping = aes(x, y, color = Label)) + geom_point() + theme_bw() + coord_equal()
+p2 = ggplot(data = dt, mapping = aes(x, y, color = Label)) + geom_point(shape = 1) + theme_bw() + coord_equal()
 #add noisyPoints:
 p2 = p2 + geom_point(data = noisyPoints, mapping = aes(x = x, y = y, color = tree), shape = 8, size = 5)
 p2 = p2 + guides(colour = guide_legend(override.aes = list(shape = c(16,16,8,8,8))))
@@ -143,6 +145,43 @@ noisyPoints[,y := NULL]
 # Run APTEC on synthesized points and clusters:
 source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClusters.R")
 assignedPoints = assignPointsToClusters(noisyPoints, dt)
+
+#Make test:
+trueClustering = data.table(tree = unique(dt$tree))
+trueClustering[, Label := ifelse(tree == 't3', 'c2', 'c1')]
+
+combinations = expand.grid(trueClustering$tree, trueClustering$Label)
+combinations = unique(combinations)
+colnames(combinations) = colnames(trueClustering)
+combinations[] <- lapply(combinations, as.character)
+# ^ note that combinations is data.frame object
+predictions = as.data.table(combinations)
+
+
+# Now add binary indication (column called Gold) of whether or not point to cluster assignment is correct:
+# Loop through all combinations of points and clusters:
+for(i in seq(nrow(predictions))){
+  print(i)
+  tree_i = predictions[i, tree]
+  label_i = predictions[i,Label]
+  predicted_assignment_i = assignedPoints[tree == tree_i, cluster_ID]
+  true_assignment_i = trueClustering[tree == tree_i, Label]
+  if(label_i == true_assignment_i){
+    print("True positive.")
+    predictions[i,Gold := TRUE]
+  } else {
+    predictions[i,Gold := FALSE]
+  }
+  if(predicted_assignment_i == label_i){
+    predictions[i,Prediction := TRUE]
+  } else{
+    predictions[i,Prediction := FALSE]
+  }
+}
+
+# Compute F1 score:
+F1_Score(predictions[,Gold], predictions[,Prediction])
+# 1
 #Passes Perfectly!
 
 
