@@ -1,0 +1,123 @@
+%adapted from: https://tex.stackexchange.com/questions/1375/what-is-a-good-package-for-displaying-algorithms/1376
+
+\documentclass{article}
+
+
+\usepackage{fontspec}
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm,algorithmicx, float}
+\usepackage[table,dvipsnames]{xcolor}
+\usepackage{amsmath}
+
+%\setmainfont{Hoefler Text}
+
+%\newcommand*\DNA{\textsc{dna}}
+
+\newcommand*\Let[2]{\State #1 $\gets$ #2}
+\algrenewcommand\alglinenumber[1]{
+    {\sf\footnotesize\addfontfeatures{Colour=888888,Numbers=Monospaced}#1}}
+\algrenewcommand\algorithmicrequire{\textbf{Preconditions:}}
+\algrenewcommand\algorithmicensure{\textbf{Postconditions:}}
+
+%https://tex.stackexchange.com/questions/263727/algorithm-and-controlling-comment-lines-shifting-right-or-left
+%-----------
+\makeatletter
+\newenvironment{breakablealgorithm}
+  {% \begin{breakablealgorithm}
+   \begin{center}
+     \refstepcounter{algorithm}% New algorithm
+     \hrule height.8pt depth0pt \kern2pt% \@fs@pre for \@fs@ruled
+     \renewcommand{\caption}[2][\relax]{% Make a new \caption
+       {\raggedright\textbf{\ALG@name~\thealgorithm} ##2\par}%
+       \ifx\relax##1\relax % #1 is \relax
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##2}%
+       \else % #1 is not \relax
+         \addcontentsline{loa}{algorithm}{\protect\numberline{\thealgorithm}##1}%
+       \fi
+       \kern2pt\hrule\kern2pt
+     }
+  }{% \end{breakablealgorithm}
+     \kern2pt\hrule\relax% \@fs@post for \@fs@ruled
+   \end{center}
+  }
+\makeatother
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\newcommand*{\argminl}{\argmin\limits}
+\newcommand*{\argmaxl}{\argmax\limits}
+\DeclareMathOperator{\dis}{d}
+
+
+\begin{document}
+
+
+\begin{breakablealgorithm}
+  %\caption{Assigns points in one dataset, $\mathbf{P}$, to clusters in another dataset, $\mathbf{C}$, flagging unlikely correspondences that have a translation distance, $\delta$, longer than the threshold, $\tau$.
+  %  \label{alg:APTEC}}
+  \begin{algorithmic}[1]
+    \Require{$\mathbf{P}$ and $\mathbf{C}$ are tables where each row is a datum.
+    Both tables have columns indicating datum coordinates.
+    The rows in $\mathbf{C}$ are grouped into clusters by a label in the column $ID^\mathbf{C}$.
+    $\lambda$ is the scalar by which to multiply the dominant mode of the translation-distance distribution.
+    }
+    \Statex
+    \makeatletter\setcounter{ALG@line}{0}\makeatother
+    \Function{APTEC}{$\mathbf{P}, \mathbf{C}, \lambda$}
+      \Let{$\mathbf{P}[:,ID^\mathbf{C}]$}{``''}
+      %\Comment{\parbox[t]{4cm}{\raggedright Instantiate column $ID^\mathbf{C}$ in $\mathbf{P}$ such that all entries are an empty string.}}
+      \Let{$\mathbf{P}[:,translatedDistance]$}{0}
+      \For{$i \gets 1 \textrm{ to } numRow\left(\mathbf{P}\right)$}
+        %\Comment{\parbox[t]{4cm}{\raggedright Loop through each datum in $\mathbf{P}$.}}
+        \Let{$\mathbf{p}_i$}{$\mathbf{P}[i,(coordinates)]$}
+        %\Let{$\mathbf{c}_i$}{$\mathbf{C}[i,(coordinates)]$}
+        \Let{$\delta$}{$min(d(\mathbf{p}_i,\mathbf{C}[:,(coordinates)]))$}
+        \Let{$\mathbf{P}[i,translatedDistance]$}{$\delta$}
+        \Let{$\mathbf{P}[i,ID^\mathbf{C}]$}{$\argminl_{ID^\mathbf{C}} (d(\mathbf{p}_i,\mathbf{C}[:,(coordinates)]))$}
+        % i am here
+      %\Let{$z$}{$x \oplus y$} \Comment{$\oplus$: bitwise exclusive-or}
+      %\Let{$\delta$}{$0$}
+      %\For{$i \gets 1 \textrm{ to } n$}
+      %  \If{$z_i \neq 0$}
+      %    \Let{$\delta$}{$\delta + 1$}
+      %  \EndIf
+      \EndFor
+      \Let{$\mathbf{P}$}{thresholdPoints($\mathbf{P}$, $\lambda$)}
+      \State \Return{$\mathbf{P}$}
+    \EndFunction
+  \end{algorithmic}
+\end{breakablealgorithm}
+
+\pagebreak
+
+\begin{breakablealgorithm}
+  %\caption{For each point in $\mathbf{P}$, computes boolean indicating whether the closest cluster is beyond the threshold, thereby indicating that it is unlikely that the point corresponds to the cluster.}
+  %  \label{alg:thresholdPoints}
+  \begin{algorithmic}[1]
+    \Require{$\mathbf{P}$ is a table where each row is a datum and with a column $translatedDistance$.
+    $\lambda$ is the scalar by which to multiply the dominant mode of the translation-distance distribution.
+    }
+    \Statex
+    \makeatletter\setcounter{ALG@line}{0}\makeatother
+    \Function{thresholdPoints}{$\mathbf{P}, \lambda$}
+      \Let{$\mathbf{P}[:,beyondThreshold]$}{logical()}
+      \Let{$clusterIDs$}{$unique(\mathbf{P}[:,ID^\mathbf{C}])$}
+      \Let{$closestPoints$}{array()}
+      \Let{$i$}{$1$}
+      \For{$clusterID \textrm{ in } clusterIDs$}
+        \Let{$closestPoints[i,:]$}{$\argminl_{\mathbf{p}_i}(\mathbf{P}[ID^\mathbf{C} =clusterID,translatedDistance])$}
+        \Let{$i$}{$i + 1$}
+      \EndFor
+      \Let{$dominantMode$}{$max(density(closestPoints[:,translatedDistance]))$}
+      \Comment{where $density()$ is a kernel density estimation.}
+      \Let{$\tau$}{$dominantMode * \lambda$}
+      \For{$i \gets 1 \textrm{ to } numRow\left(\mathbf{P}\right)$}
+        \Let{$\mathbf{P}[i,beyondThreshold]$}{$\mathbf{P}[i,translatedDistance] > \tau $}
+      \EndFor
+      %\Let{$closestPoints$}{subset(\mathbf{P} by)}
+      \State \Return{$\mathbf{P}$}
+    \EndFunction
+  \end{algorithmic}
+\end{breakablealgorithm}
+
+\end{document}

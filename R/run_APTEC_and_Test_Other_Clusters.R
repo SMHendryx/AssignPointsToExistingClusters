@@ -30,7 +30,7 @@ startTime = Sys.time()
 library(data.table)
 library(ggplot2)
 library(feather)
-source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClusters.R")
+source("/Users/seanhendryx/githublocal/assignPointsToClusters/APTEC.R")
 
 
 # Run test:

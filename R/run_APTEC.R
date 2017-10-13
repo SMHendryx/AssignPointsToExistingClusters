@@ -13,7 +13,7 @@ startTime = Sys.time()
 #load packages:
 library(data.table)
 library(ggplot2)
-source("/Users/seanhendryx/githublocal/assignPointsToClusters/assignPointsToClusters.R")
+source("/Users/seanhendryx/githublocal/assignPointsToClusters/APTEC.R")
 
 
 #helper functions first:
