@@ -4,5 +4,6 @@
 
  Finding correct correspondences between datasets is particularly important when training and testing supervised machine learning models.  These algorithms have been specifically developed for finding matches between in situ data and clusters in remotely sensed point clouds (such as from lidar and Structure from Motion), though the ideas will generalize to other contexts in machine learning in which the goal is match points in one dataset to clusters in another dataset.
 
-![pseudcode](LaTeX/APTEC.png)
+![APTEC_pseudcode](LaTeX/APTEC.png)
+![thresholdPoints_pseudcode](LaTeX/thresholdPoints.png)
 
