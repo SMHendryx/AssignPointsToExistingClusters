@@ -102,7 +102,7 @@ thresholdPoints <- function(points, thresholdType = "dominateMode", buffer = 10,
 }
 
 # vectorized:
-assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
+APTEC <- assignPointsToExistingClusters <- assignPointsToClusters <- function(points, clusters, x_col_name = 'X', y_col_name = 'Y', cluster_ID_col_name = 'Label', thresholdType = "dominateMode", buffer = 10){
   # Algorithm assigns points, in a dataset $\bf{P}$, to the closet cluster in another dataset, $\bf{C}$,
   # flags unlikely correspondences based on distance threshold,
   # and then determines if any other clusters should be assigned to that point based on information held in the point.
